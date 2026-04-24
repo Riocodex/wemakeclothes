@@ -1,14 +1,15 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { easing } from 'maath'
 import { useSnapshot } from 'valtio'
 import { useFrame } from '@react-three/fiber'
 import { Decal, useGLTF, useTexture } from '@react-three/drei'
+import * as THREE from 'three'
 import state from '../store'
 
 
 const Shirt = () => {
     const snap = useSnapshot(state)
-    const{nodes, materials}= useGLTF('/shirt_baked.glb')
+    const{nodes}= useGLTF('/shirt_baked.glb')
     const shirtRef = useRef()
     const dragState = useRef({
         isDragging: false,
@@ -20,10 +21,26 @@ const Shirt = () => {
 
     const logoTexture = useTexture(snap.logoDecal)
     const fullTexture = useTexture(snap.fullDecal)
+    const shirtMaterial = useMemo(
+        () =>
+            new THREE.MeshStandardMaterial({
+                color: snap.color,
+                roughness: 1,
+                metalness: 0,
+                side: THREE.DoubleSide,
+            }),
+        []
+    )
+
+    useEffect(() => {
+        return () => {
+            shirtMaterial.dispose()
+        }
+    }, [shirtMaterial])
 
     //to add smooth colors
     useFrame((_, delta)=>{
-        easing.dampC(materials.lambert1.color,snap.color,0.25,delta)
+        easing.dampC(shirtMaterial.color,snap.color,0.25,delta)
         easing.dampE(
             shirtRef.current.rotation,
             [dragState.current.targetX, dragState.current.targetY, 0],
@@ -69,7 +86,7 @@ const Shirt = () => {
         <mesh
             castShadow
             geometry={nodes.T_Shirt_male.geometry}
-            material={materials.lambert1}
+            material={shirtMaterial}
             material-roughness={1}
             dispose={null}
             onPointerDown={handlePointerDown}
