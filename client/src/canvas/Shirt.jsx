@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { easing } from 'maath'
 import { useSnapshot } from 'valtio'
 import { useFrame } from '@react-three/fiber'
@@ -9,23 +9,73 @@ import state from '../store'
 const Shirt = () => {
     const snap = useSnapshot(state)
     const{nodes, materials}= useGLTF('/shirt_baked.glb')
+    const shirtRef = useRef()
+    const dragState = useRef({
+        isDragging: false,
+        lastX: 0,
+        lastY: 0,
+        targetX: 0,
+        targetY: 0,
+    })
 
     const logoTexture = useTexture(snap.logoDecal)
     const fullTexture = useTexture(snap.fullDecal)
 
     //to add smooth colors
-    useFrame((state, delta)=>easing.dampC(materials.lambert1.color,snap.color,0.25,delta))
+    useFrame((_, delta)=>{
+        easing.dampC(materials.lambert1.color,snap.color,0.25,delta)
+        easing.dampE(
+            shirtRef.current.rotation,
+            [dragState.current.targetX, dragState.current.targetY, 0],
+            0.2,
+            delta
+        )
+    })
 
-    //this is to make sure the shirt updates because sometimes it doesnt..state is saved ina  variable and passed in the key so reacct renders te model whenever the state changes
-    const stateString = JSON.stringify(snap)
+    const handlePointerDown = (event) => {
+        event.stopPropagation()
+        dragState.current.isDragging = true
+        dragState.current.lastX = event.clientX
+        dragState.current.lastY = event.clientY
+        event.target.setPointerCapture(event.pointerId)
+    }
+
+    const handlePointerMove = (event) => {
+        if (!dragState.current.isDragging) return
+        event.stopPropagation()
+
+        const deltaX = event.clientX - dragState.current.lastX
+        const deltaY = event.clientY - dragState.current.lastY
+
+        // Horizontal drag gives full 360 product-style spin.
+        dragState.current.targetY += deltaX * 0.01
+        // Vertical drag tilts slightly but stays natural.
+        dragState.current.targetX = Math.max(
+            -0.5,
+            Math.min(0.5, dragState.current.targetX + deltaY * 0.005)
+        )
+
+        dragState.current.lastX = event.clientX
+        dragState.current.lastY = event.clientY
+    }
+
+    const handlePointerUp = (event) => {
+        dragState.current.isDragging = false
+        event.target.releasePointerCapture(event.pointerId)
+    }
+
   return (
-    <group key={stateString}> 
+    <group ref={shirtRef}> 
         <mesh
             castShadow
             geometry={nodes.T_Shirt_male.geometry}
             material={materials.lambert1}
             material-roughness={1}
             dispose={null}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerOut={handlePointerUp}
         >
             {/* checking if we have the texture and logo */}
             {snap.isFullTexture && (
