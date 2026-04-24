@@ -23,6 +23,10 @@ const Customizer = () => {
     logoShirt: true,
     stylishShirt: false,
   })
+  const themeButtons = [
+    { name: 'dark', label: 'Dark' },
+    { name: 'light', label: 'Light' },
+  ]
 
   // show tab content depending on the activeTab
   const generateTabContent = () => {
@@ -116,6 +120,10 @@ const Customizer = () => {
       })
   }
 
+  const handleThemeChange = (themeName) => {
+    state.sceneTheme = themeName
+  }
+
   return (
     <AnimatePresence>
       {!snap.intro && (
@@ -156,6 +164,17 @@ const Customizer = () => {
             className='filtertabs-container'
             {...slideAnimation("up")}
           >
+            <div className="glassmorphism rounded-lg px-2 py-2 flex items-center gap-2">
+              {themeButtons.map((theme) => (
+                <CustomButton
+                  key={theme.name}
+                  type={snap.sceneTheme === theme.name ? "filled" : "outline"}
+                  title={theme.label}
+                  handleClick={() => handleThemeChange(theme.name)}
+                  customStyles="w-fit px-3 py-1.5 text-xs font-semibold"
+                />
+              ))}
+            </div>
             {FilterTabs.map((tab) => (
               <Tab
                 key={tab.name}
