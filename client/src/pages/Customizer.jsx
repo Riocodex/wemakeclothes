@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSnapshot } from 'valtio';
 
@@ -8,6 +8,8 @@ import { download } from '../assets';
 import { downloadCanvasToImage, reader } from '../config/helpers';
 import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants';
 import { fadeAnimation, slideAnimation } from '../config/motion';
+import { GARMENT_OPTIONS } from '../config/garments';
+import { applyGarmentChange, getEditorOptions, CATALOG_META, syncRootFromDesign } from '../config/designSchema';
 import { AIPicker, ColorPicker, CustomButton, FilePicker, Tab } from '../components';
 
 const Customizer = () => {
@@ -23,6 +25,10 @@ const Customizer = () => {
     logoShirt: true,
     stylishShirt: false,
   })
+  const [isGarmentPickerOpen, setIsGarmentPickerOpen] = useState(false)
+  const selectedGarment = snap.design?.catalogId || 'tshirt_short'
+  const editorOptions = getEditorOptions(selectedGarment)
+  const designMeta = CATALOG_META[selectedGarment] || CATALOG_META.tshirt_short
   const themeButtons = [
     { name: 'dark', label: 'Dark' },
     { name: 'light', label: 'Light' },
@@ -82,6 +88,21 @@ const Customizer = () => {
     const decalType = DecalTypes[type];
 
     state[decalType.stateProperty] = result;
+    if (state.design) {
+      if (type === 'logo') state.design.textures = { ...state.design.textures, logo: result }
+      if (type === 'full') state.design.textures = { ...state.design.textures, full: result }
+      const layerId = `${type}-layer`
+      const existingLayerIndex = state.design.layers.findIndex((layer) => layer.id === layerId)
+      const layerPayload = {
+        id: layerId,
+        type: 'image',
+        placement: type,
+        src: result,
+      }
+      if (existingLayerIndex >= 0) state.design.layers[existingLayerIndex] = layerPayload
+      else state.design.layers.push(layerPayload)
+    }
+    syncRootFromDesign(state);
 
     if(!activeFilterTab[decalType.filterTab]) {
       handleActiveFilterTab(decalType.filterTab)
@@ -92,13 +113,19 @@ const Customizer = () => {
     switch (tabName) {
       case "logoShirt":
           state.isLogoTexture = !activeFilterTab[tabName];
+        if (state.design) state.design.isLogoTexture = state.isLogoTexture
         break;
       case "stylishShirt":
-          state.isFullTexture = !activeFilterTab[tabName];
+        state.isFullTexture = !activeFilterTab[tabName];
+        if (state.design) state.design.isFullTexture = state.isFullTexture
         break;
       default:
         state.isLogoTexture = true;
         state.isFullTexture = false;
+        if (state.design) {
+          state.design.isLogoTexture = true
+          state.design.isFullTexture = false
+        }
         break;
     }
 
@@ -122,6 +149,37 @@ const Customizer = () => {
 
   const handleThemeChange = (themeName) => {
     state.sceneTheme = themeName
+  }
+
+  const handleGarmentChange = (newCatalogId) => {
+    applyGarmentChange(state, newCatalogId, {
+      keepColors: true,
+      keepTextures: true,
+      keepLayers: true
+    })
+    setIsGarmentPickerOpen(false)
+  }
+
+  const handleSleeve = (sleeve) => {
+    const id = sleeve === 'long' ? 'tshirt_long' : 'tshirt_short'
+    if (state.design?.catalogId === id) return
+    applyGarmentChange(state, id, {
+      keepColors: true,
+      keepTextures: true,
+      keepLayers: true
+    })
+  }
+
+  const optionLabel = (key) => ({
+    sleeve: 'Sleeve',
+    color: 'Color',
+    texture: 'Texture',
+    length: 'Length',
+  }[key] || key)
+
+  const onEditorOption = (key) => {
+    if (key === 'color') setActiveEditorTab('colorpicker')
+    if (key === 'texture') setActiveEditorTab('filepicker')
   }
 
   return (
@@ -164,6 +222,47 @@ const Customizer = () => {
             className='filtertabs-container'
             {...slideAnimation("up")}
           >
+            <div className="flex flex-col items-center gap-2 max-w-[min(100vw,720px)]">
+            <div className="glassmorphism rounded-lg px-2 py-2 flex items-center gap-1 flex-wrap justify-center max-w-full">
+              {editorOptions.map((key) => (
+                <CustomButton
+                  key={key}
+                  type="outline"
+                  title={optionLabel(key)}
+                  handleClick={() => onEditorOption(key)}
+                  customStyles="w-fit px-2.5 py-1.5 text-[11px] font-semibold"
+                />
+              ))}
+            </div>
+            {designMeta.type === 'tshirt' && (
+              <div className="glassmorphism rounded-lg px-2 py-1.5 flex items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-600 uppercase">Sleeve</span>
+                <CustomButton
+                  type={selectedGarment === 'tshirt_short' ? 'filled' : 'outline'}
+                  title="Short"
+                  handleClick={() => handleSleeve('short')}
+                  customStyles="w-fit px-2.5 py-1 text-xs font-semibold"
+                />
+                <CustomButton
+                  type={selectedGarment === 'tshirt_long' ? 'filled' : 'outline'}
+                  title="Long"
+                  handleClick={() => handleSleeve('long')}
+                  customStyles="w-fit px-2.5 py-1 text-xs font-semibold"
+                />
+              </div>
+            )}
+            {editorOptions.includes('length') && designMeta.type === 'dress' && (
+              <div className="text-[10px] text-gray-500 px-1">Hem / length: coming soon (schema hook)</div>
+            )}
+            <div className="glassmorphism rounded-lg px-2 py-2 flex items-center gap-2">
+              <CustomButton
+                type="outline"
+                title={`Style: ${GARMENT_OPTIONS.find((item) => item.name === selectedGarment)?.label || 'Select'}`}
+                handleClick={() => setIsGarmentPickerOpen(true)}
+                customStyles="w-fit px-3 py-1.5 text-xs font-semibold"
+              />
+            </div>
+            </div>
             <div className="glassmorphism rounded-lg px-2 py-2 flex items-center gap-2">
               {themeButtons.map((theme) => (
                 <CustomButton
@@ -185,6 +284,61 @@ const Customizer = () => {
               />
             ))}
           </motion.div>
+
+          <AnimatePresence>
+            {isGarmentPickerOpen && (
+              <motion.div
+                className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 backdrop-blur-[2px]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsGarmentPickerOpen(false)}
+              >
+                <motion.div
+                  className="glassmorphism rounded-xl p-4 w-[min(92vw,620px)]"
+                  initial={{ opacity: 0, scale: 0.92, y: 16 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 24 }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-800">Choose Garment Style</h3>
+                    <CustomButton
+                      type="outline"
+                      title="Close"
+                      handleClick={() => setIsGarmentPickerOpen(false)}
+                      customStyles="w-fit px-3 py-1 text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {GARMENT_OPTIONS.map((item) => {
+                      const isActive = selectedGarment === item.name
+                      return (
+                        <button
+                          key={item.name}
+                          type="button"
+                          className="glassmorphism rounded-lg p-3 text-left transition-all hover:scale-[1.02]"
+                          onClick={() => handleGarmentChange(item.name)}
+                          style={{
+                            borderColor: isActive ? snap.color : "rgba(255,255,255,0.18)",
+                            borderWidth: isActive ? "2px" : "1px",
+                          }}
+                        >
+                          <div className="text-2xl mb-1">{item.preview}</div>
+                          <div className="text-sm font-semibold text-gray-900">{item.label}</div>
+                          <div className="text-[11px] text-gray-600">
+                            Tap to apply this style
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>
