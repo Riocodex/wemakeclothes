@@ -81,6 +81,47 @@ const Shirt = () => {
 
   const logoCfg = { ...defaultLogoDecal, ...garmentConfig.decal?.logo }
   const fullCfg = { ...defaultFullDecal, ...garmentConfig.decal?.full }
+  const dressGeometry = useMemo(() => {
+    const shape = new THREE.Shape()
+    shape.moveTo(-0.34, -0.5)
+    shape.quadraticCurveTo(-0.28, -0.36, -0.24, -0.22)
+    shape.quadraticCurveTo(-0.2, -0.03, -0.18, 0.08)
+    shape.quadraticCurveTo(-0.2, 0.24, -0.14, 0.34)
+    shape.quadraticCurveTo(-0.1, 0.44, -0.08, 0.5)
+    shape.lineTo(-0.04, 0.52) // left strap
+    shape.lineTo(-0.02, 0.36)
+    shape.lineTo(0.02, 0.36)
+    shape.lineTo(0.04, 0.52) // right strap
+    shape.lineTo(0.08, 0.5)
+    shape.quadraticCurveTo(0.1, 0.44, 0.14, 0.34)
+    shape.quadraticCurveTo(0.2, 0.24, 0.18, 0.08)
+    shape.quadraticCurveTo(0.2, -0.03, 0.24, -0.22)
+    shape.quadraticCurveTo(0.28, -0.36, 0.34, -0.5)
+    shape.lineTo(0.22, -0.5)
+    shape.quadraticCurveTo(0.12, -0.52, 0, -0.54)
+    shape.quadraticCurveTo(-0.12, -0.52, -0.22, -0.5)
+
+    const neckHole = new THREE.Path()
+    neckHole.moveTo(-0.07, 0.34)
+    neckHole.quadraticCurveTo(0, 0.3, 0.07, 0.34)
+    neckHole.lineTo(0.05, 0.42)
+    neckHole.quadraticCurveTo(0, 0.38, -0.05, 0.42)
+    neckHole.closePath()
+    shape.holes.push(neckHole)
+
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth: 0.22,
+      bevelEnabled: true,
+      bevelThickness: 0.015,
+      bevelSize: 0.01,
+      bevelSegments: 2,
+      steps: 1,
+      curveSegments: 48,
+    })
+    geometry.translate(0, 0, -0.11)
+    geometry.computeVertexNormals()
+    return geometry
+  }, [])
 
   const shirtMaterial = useMemo(
     () =>
@@ -98,6 +139,12 @@ const Shirt = () => {
       shirtMaterial.dispose()
     }
   }, [shirtMaterial])
+
+  useEffect(() => {
+    return () => {
+      dressGeometry.dispose()
+    }
+  }, [dressGeometry])
 
   useEffect(() => {
     return () => {
@@ -199,12 +246,8 @@ const Shirt = () => {
       <group ref={shirtRef}>
         {(catalogId === 'dress') && (
           <group {...pointer}>
-            <mesh material={shirtMaterial} position={[0, 0.2, 0]}>
-              <cylinderGeometry args={[0.36, 0.34, 0.45, 48]} />
+            <mesh material={shirtMaterial} geometry={dressGeometry} position={[0, 0.02, 0]}>
               {renderDecals()}
-            </mesh>
-            <mesh material={shirtMaterial} position={[0, -0.25, 0]}>
-              <coneGeometry args={[0.58, 0.8, 48]} />
             </mesh>
           </group>
         )}

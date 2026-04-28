@@ -5,11 +5,12 @@ import { useSnapshot } from 'valtio';
 import config from '../config/config';
 import state from '../store';
 import { download } from '../assets';
-import { downloadCanvasToImage, reader } from '../config/helpers';
+import { captureCanvasPreview, downloadCanvasToImage, reader } from '../config/helpers';
 import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants';
 import { fadeAnimation, slideAnimation } from '../config/motion';
 import { GARMENT_OPTIONS } from '../config/garments';
-import { applyGarmentChange, getEditorOptions, CATALOG_META, syncRootFromDesign } from '../config/designSchema';
+import { applyGarmentChange, syncRootFromDesign } from '../config/designSchema';
+import { saveDesign } from '../services/designService';
 import { AIPicker, ColorPicker, CustomButton, FilePicker, Tab } from '../components';
 
 const Customizer = () => {
@@ -19,6 +20,7 @@ const Customizer = () => {
 
   const [prompt, setPrompt] = useState('');
   const [generatingImg, setGeneratingImg] = useState(false);
+  const [savingDesign, setSavingDesign] = useState(false);
 
   const [activeEditorTab, setActiveEditorTab] = useState("");
   const [activeFilterTab, setActiveFilterTab] = useState({
@@ -27,8 +29,6 @@ const Customizer = () => {
   })
   const [isGarmentPickerOpen, setIsGarmentPickerOpen] = useState(false)
   const selectedGarment = snap.design?.catalogId || 'tshirt_short'
-  const editorOptions = getEditorOptions(selectedGarment)
-  const designMeta = CATALOG_META[selectedGarment] || CATALOG_META.tshirt_short
   const themeButtons = [
     { name: 'dark', label: 'Dark' },
     { name: 'light', label: 'Light' },
@@ -160,26 +160,28 @@ const Customizer = () => {
     setIsGarmentPickerOpen(false)
   }
 
-  const handleSleeve = (sleeve) => {
-    const id = sleeve === 'long' ? 'tshirt_long' : 'tshirt_short'
-    if (state.design?.catalogId === id) return
-    applyGarmentChange(state, id, {
-      keepColors: true,
-      keepTextures: true,
-      keepLayers: true
-    })
-  }
+  const handleSaveDesign = () => {
+    if (!snap.design || savingDesign) return
+    setSavingDesign(true)
+    try {
+      const previewImage = captureCanvasPreview()
+      const selectedGarmentLabel = GARMENT_OPTIONS.find(
+        (item) => item.name === selectedGarment
+      )?.label || 'Design'
 
-  const optionLabel = (key) => ({
-    sleeve: 'Sleeve',
-    color: 'Color',
-    texture: 'Texture',
-    length: 'Length',
-  }[key] || key)
+      const saved = saveDesign({
+        title: `${selectedGarmentLabel} ${new Date().toLocaleDateString()}`,
+        design: JSON.parse(JSON.stringify(snap.design)),
+        previewImage,
+        sceneTheme: snap.sceneTheme,
+      })
 
-  const onEditorOption = (key) => {
-    if (key === 'color') setActiveEditorTab('colorpicker')
-    if (key === 'texture') setActiveEditorTab('filepicker')
+      alert(`Design saved successfully. ID: ${saved.id.slice(0, 8)}`)
+    } catch (error) {
+      alert('Could not save design. Please try again.')
+    } finally {
+      setSavingDesign(false)
+    }
   }
 
   return (
@@ -210,60 +212,33 @@ const Customizer = () => {
             className="absolute z-10 top-5 right-5"
             {...fadeAnimation}
           >
-            <CustomButton 
-              type="filled"
-              title="Go Back"
-              handleClick={() => state.intro = true}
-              customStyles="w-fit px-4 py-2.5 font-bold text-sm"
-            />
+            <div className="flex items-center gap-2">
+              <CustomButton 
+                type="outline"
+                title={savingDesign ? "Saving..." : "Save Design"}
+                handleClick={handleSaveDesign}
+                customStyles="w-fit px-4 py-2.5 font-bold text-sm"
+              />
+              <CustomButton 
+                type="filled"
+                title="Go Back"
+                handleClick={() => state.intro = true}
+                customStyles="w-fit px-4 py-2.5 font-bold text-sm"
+              />
+            </div>
           </motion.div>
 
           <motion.div
             className='filtertabs-container'
             {...slideAnimation("up")}
           >
-            <div className="flex flex-col items-center gap-2 max-w-[min(100vw,720px)]">
-            <div className="glassmorphism rounded-lg px-2 py-2 flex items-center gap-1 flex-wrap justify-center max-w-full">
-              {editorOptions.map((key) => (
-                <CustomButton
-                  key={key}
-                  type="outline"
-                  title={optionLabel(key)}
-                  handleClick={() => onEditorOption(key)}
-                  customStyles="w-fit px-2.5 py-1.5 text-[11px] font-semibold"
-                />
-              ))}
-            </div>
-            {designMeta.type === 'tshirt' && (
-              <div className="glassmorphism rounded-lg px-2 py-1.5 flex items-center gap-2">
-                <span className="text-[10px] font-bold text-gray-600 uppercase">Sleeve</span>
-                <CustomButton
-                  type={selectedGarment === 'tshirt_short' ? 'filled' : 'outline'}
-                  title="Short"
-                  handleClick={() => handleSleeve('short')}
-                  customStyles="w-fit px-2.5 py-1 text-xs font-semibold"
-                />
-                <CustomButton
-                  type={selectedGarment === 'tshirt_long' ? 'filled' : 'outline'}
-                  title="Long"
-                  handleClick={() => handleSleeve('long')}
-                  customStyles="w-fit px-2.5 py-1 text-xs font-semibold"
-                />
-              </div>
-            )}
-            {editorOptions.includes('length') && designMeta.type === 'dress' && (
-              <div className="text-[10px] text-gray-500 px-1">Hem / length: coming soon (schema hook)</div>
-            )}
-            <div className="glassmorphism rounded-lg px-2 py-2 flex items-center gap-2">
+            <div className="glassmorphism rounded-lg px-3 py-2 flex items-center gap-2">
               <CustomButton
                 type="outline"
                 title={`Style: ${GARMENT_OPTIONS.find((item) => item.name === selectedGarment)?.label || 'Select'}`}
                 handleClick={() => setIsGarmentPickerOpen(true)}
                 customStyles="w-fit px-3 py-1.5 text-xs font-semibold"
               />
-            </div>
-            </div>
-            <div className="glassmorphism rounded-lg px-2 py-2 flex items-center gap-2">
               {themeButtons.map((theme) => (
                 <CustomButton
                   key={theme.name}
