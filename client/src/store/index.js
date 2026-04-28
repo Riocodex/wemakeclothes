@@ -10,6 +10,7 @@ const initialDesign = migrateOrCreateDesign({
 
 const state = proxy({
   intro: true,
+  myDesignsOpen: false,
   /* Legacy: synced from design (SSOT) via syncRootFromDesign */
   color: initialDesign.colors.body,
   sceneTheme: "dark",

@@ -16,7 +16,7 @@ const Home = () => {
 
   return (
    <AnimatePresence>
-    {snap.intro && (
+    {snap.intro && !snap.myDesignsOpen && (
         <motion.section className='home'{...slideAnimation('left')}>
             <motion.header{...slideAnimation("down")}>
                 <img
@@ -39,7 +39,13 @@ const Home = () => {
                     <CustomButton
                         type="filled"
                         title="Customize It"
-                        handleClick={()=> state.intro = false}
+                        handleClick={()=> { state.myDesignsOpen = false; state.intro = false }}
+                        customStyles="w-fit px-4 py-2.5 font-bold text-sm"
+                    />
+                    <CustomButton
+                        type="outline"
+                        title="My Designs"
+                        handleClick={() => { state.myDesignsOpen = true }}
                         customStyles="w-fit px-4 py-2.5 font-bold text-sm"
                     />
                 </motion.div>
