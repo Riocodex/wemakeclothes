@@ -162,15 +162,17 @@ const Customizer = () => {
 
   const handleSaveDesign = () => {
     if (!snap.design || savingDesign) return
+    const inputName = window.prompt('Enter a name for this design:')
+    const trimmedName = (inputName || '').trim()
+    if (!trimmedName) {
+      alert('Please enter a design name before saving.')
+      return
+    }
     setSavingDesign(true)
     try {
       const previewImage = captureCanvasPreview()
-      const selectedGarmentLabel = GARMENT_OPTIONS.find(
-        (item) => item.name === selectedGarment
-      )?.label || 'Design'
-
       const saved = saveDesign({
-        title: `${selectedGarmentLabel} ${new Date().toLocaleDateString()}`,
+        title: trimmedName,
         design: JSON.parse(JSON.stringify(snap.design)),
         previewImage,
         sceneTheme: snap.sceneTheme,

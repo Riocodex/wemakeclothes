@@ -36,3 +36,10 @@ export const saveDesign = ({ title, design, previewImage, sceneTheme }) => {
 export const listDesigns = () => readAll()
 
 export const getDesignById = (id) => readAll().find((item) => item.id === id) || null
+
+export const deleteDesignById = (id) => {
+  const existing = readAll()
+  const next = existing.filter((item) => item.id !== id)
+  writeAll(next)
+  return next.length !== existing.length
+}

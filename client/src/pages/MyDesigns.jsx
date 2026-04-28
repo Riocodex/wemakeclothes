@@ -1,16 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSnapshot } from 'valtio'
 
 import state from '../store'
 import { CustomButton } from '../components'
-import { listDesigns } from '../services/designService'
+import { deleteDesignById, listDesigns } from '../services/designService'
 import { migrateOrCreateDesign, syncRootFromDesign } from '../config/designSchema'
 import { slideAnimation } from '../config/motion'
 
 const MyDesigns = () => {
   const snap = useSnapshot(state)
-  const designs = useMemo(() => listDesigns(), [snap.myDesignsOpen])
+  const [refreshKey, setRefreshKey] = useState(0)
+  const designsView = useMemo(() => listDesigns(), [snap.myDesignsOpen, refreshKey])
 
   const handleOpenDesign = (saved) => {
     state.design = migrateOrCreateDesign(saved.design)
@@ -18,6 +19,15 @@ const MyDesigns = () => {
     syncRootFromDesign(state)
     state.myDesignsOpen = false
     state.intro = false
+  }
+
+  const handleDeleteDesign = (id) => {
+    const ok = window.confirm('Delete this design permanently?')
+    if (!ok) return
+    const deleted = deleteDesignById(id)
+    if (deleted) {
+      setRefreshKey((prev) => prev + 1)
+    }
   }
 
   return (
@@ -35,15 +45,15 @@ const MyDesigns = () => {
           </div>
 
           <div className='mt-6 w-[min(92vw,980px)] max-h-[72vh] overflow-auto pr-1'>
-            {designs.length === 0 && (
+            {designsView.length === 0 && (
               <div className='glassmorphism rounded-xl p-6 text-sm text-gray-700'>
                 No saved designs yet. Open the customizer and click `Save Design` first.
               </div>
             )}
 
-            {designs.length > 0 && (
+            {designsView.length > 0 && (
               <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
-                {designs.map((item) => (
+                {designsView.map((item) => (
                   <div key={item.id} className='glassmorphism rounded-xl p-3 flex flex-col gap-3'>
                     <div className='rounded-lg overflow-hidden bg-gray-100 h-40'>
                       {item.previewImage ? (
@@ -64,6 +74,12 @@ const MyDesigns = () => {
                       type='filled'
                       title='Open in editor'
                       handleClick={() => handleOpenDesign(item)}
+                      customStyles='w-full py-2 text-xs font-semibold'
+                    />
+                    <CustomButton
+                      type='outline'
+                      title='Delete'
+                      handleClick={() => handleDeleteDesign(item.id)}
                       customStyles='w-full py-2 text-xs font-semibold'
                     />
                   </div>
