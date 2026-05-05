@@ -11,6 +11,9 @@ const initialDesign = migrateOrCreateDesign({
 const state = proxy({
   intro: true,
   myDesignsOpen: false,
+  marketplaceOpen: false,
+  viewerOpen: false,
+  viewerListing: null,
   /* Legacy: synced from design (SSOT) via syncRootFromDesign */
   color: initialDesign.colors.body,
   sceneTheme: "dark",

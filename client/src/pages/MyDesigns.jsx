@@ -4,13 +4,20 @@ import { useSnapshot } from 'valtio'
 
 import state from '../store'
 import { CustomButton } from '../components'
-import { deleteDesignById, listDesigns } from '../services/designService'
+import {
+  deleteDesignById,
+  deleteListingById,
+  getListingBySourceDesignId,
+  listDesignForSale,
+  listDesigns
+} from '../services/designService'
 import { migrateOrCreateDesign, syncRootFromDesign } from '../config/designSchema'
 import { slideAnimation } from '../config/motion'
 
 const MyDesigns = () => {
   const snap = useSnapshot(state)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [listingDraft, setListingDraft] = useState(null)
   const designsView = useMemo(() => listDesigns(), [snap.myDesignsOpen, refreshKey])
 
   const handleOpenDesign = (saved) => {
@@ -18,6 +25,20 @@ const MyDesigns = () => {
     if (saved.sceneTheme) state.sceneTheme = saved.sceneTheme
     syncRootFromDesign(state)
     state.myDesignsOpen = false
+    state.marketplaceOpen = false
+    state.viewerOpen = false
+    state.viewerListing = null
+    state.intro = false
+  }
+
+  const handleViewListing = (listing) => {
+    state.design = migrateOrCreateDesign(listing.design)
+    if (listing.sceneTheme) state.sceneTheme = listing.sceneTheme
+    syncRootFromDesign(state)
+    state.viewerListing = { ...listing, isMine: true }
+    state.viewerOpen = true
+    state.myDesignsOpen = false
+    state.marketplaceOpen = false
     state.intro = false
   }
 
@@ -30,18 +51,58 @@ const MyDesigns = () => {
     }
   }
 
+  const handleListDesign = (item) => {
+    setListingDraft({
+      item,
+      price: '29',
+      description: 'Custom clothing design ready to edit or wear.'
+    })
+  }
+
+  const handleConfirmListing = () => {
+    if (!listingDraft?.item) return
+    const price = Number(listingDraft.price)
+    if (!Number.isFinite(price) || price <= 0) {
+      alert('Please enter a valid price.')
+      return
+    }
+    listDesignForSale({
+      savedDesign: listingDraft.item,
+      price,
+      description: (listingDraft.description || '').trim()
+    })
+    setListingDraft(null)
+    alert('Design listed on the marketplace.')
+    setRefreshKey((prev) => prev + 1)
+  }
+
+  const handleUnlistDesign = (listing) => {
+    const ok = window.confirm('Remove this design from the marketplace?')
+    if (!ok) return
+    deleteListingById(listing.id)
+    setRefreshKey((prev) => prev + 1)
+  }
+
   return (
     <AnimatePresence>
-      {snap.intro && snap.myDesignsOpen && (
+      {snap.intro && snap.myDesignsOpen && !snap.marketplaceOpen && (
         <motion.section className='home' {...slideAnimation('right')}>
           <div className='w-full flex items-center justify-between'>
             <h2 className='text-2xl font-black text-black'>My Designs</h2>
-            <CustomButton
-              type='outline'
-              title='Back'
-              handleClick={() => { state.myDesignsOpen = false }}
-              customStyles='w-fit px-4 py-2 text-sm font-bold'
-            />
+            <div className='flex items-center gap-2'>
+              <CustomButton
+                type='outline'
+                title='Marketplace'
+                handleClick={() => { state.myDesignsOpen = false; state.marketplaceOpen = true }}
+                customStyles='w-fit px-4 py-2 text-sm font-bold'
+              />
+              <CustomButton
+                type='outline'
+                title='Back'
+                handleClick={() => { state.myDesignsOpen = false }}
+                customStyles='w-fit px-4 py-2 text-sm font-bold'
+              />
+            </div>
           </div>
 
           <div className='mt-6 w-[min(92vw,980px)] max-h-[72vh] overflow-auto pr-1'>
@@ -53,40 +114,130 @@ const MyDesigns = () => {
 
             {designsView.length > 0 && (
               <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
-                {designsView.map((item) => (
-                  <div key={item.id} className='glassmorphism rounded-xl p-3 flex flex-col gap-3'>
-                    <div className='rounded-lg overflow-hidden bg-gray-100 h-40'>
-                      {item.previewImage ? (
-                        <img src={item.previewImage} alt={item.title} className='w-full h-full object-cover' />
-                      ) : (
-                        <div className='w-full h-full flex items-center justify-center text-xs text-gray-500'>
-                          No preview
+                {designsView.map((item) => {
+                  const listing = getListingBySourceDesignId(item.id)
+                  return (
+                    <div key={item.id} className='glassmorphism rounded-xl p-3 flex flex-col gap-3'>
+                      <div className='rounded-lg overflow-hidden bg-gray-100 h-40'>
+                        {item.previewImage ? (
+                          <img src={item.previewImage} alt={item.title} className='w-full h-full object-cover' />
+                        ) : (
+                          <div className='w-full h-full flex items-center justify-center text-xs text-gray-500'>
+                            No preview
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <div className='flex items-center justify-between gap-2'>
+                          <p className='text-sm font-semibold text-gray-900 truncate'>{item.title}</p>
+                          {listing && <p className='text-[11px] font-bold text-gray-700'>${Number(listing.price).toFixed(0)}</p>}
                         </div>
+                        <p className='text-[11px] text-gray-600'>
+                          {listing ? 'Listed on marketplace' : new Date(item.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <CustomButton
+                        type='filled'
+                        title='Open in editor'
+                        handleClick={() => handleOpenDesign(item)}
+                        customStyles='w-full py-2 text-xs font-semibold'
+                      />
+                      {listing ? (
+                        <>
+                          <CustomButton
+                            type='outline'
+                            title='View listing'
+                            handleClick={() => handleViewListing(listing)}
+                            customStyles='w-full py-2 text-xs font-semibold'
+                          />
+                          <CustomButton
+                            type='outline'
+                            title='Unlist from marketplace'
+                            handleClick={() => handleUnlistDesign(listing)}
+                            customStyles='w-full py-2 text-xs font-semibold'
+                          />
+                        </>
+                      ) : (
+                        <CustomButton
+                          type='outline'
+                          title='List for sale'
+                          handleClick={() => handleListDesign(item)}
+                          customStyles='w-full py-2 text-xs font-semibold'
+                        />
                       )}
+                      <CustomButton
+                        type='outline'
+                        title='Delete'
+                        handleClick={() => handleDeleteDesign(item.id)}
+                        customStyles='w-full py-2 text-xs font-semibold'
+                      />
                     </div>
-                    <div>
-                      <p className='text-sm font-semibold text-gray-900 truncate'>{item.title}</p>
-                      <p className='text-[11px] text-gray-600'>
-                        {new Date(item.createdAt).toLocaleString()}
-                      </p>
-                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {listingDraft && (
+              <motion.div
+                className='absolute inset-0 z-20 flex items-center justify-center bg-black/30 backdrop-blur-[2px]'
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setListingDraft(null)}
+              >
+                <motion.div
+                  className='glassmorphism rounded-xl p-4 w-[min(92vw,420px)]'
+                  initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: 8 }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <h3 className='text-lg font-black text-gray-950'>List design</h3>
+                  <p className='mt-1 text-sm text-gray-600 truncate'>{listingDraft.item.title}</p>
+
+                  <label className='mt-4 block text-xs font-bold text-gray-700' htmlFor='listing-price'>
+                    Price
+                  </label>
+                  <input
+                    id='listing-price'
+                    type='number'
+                    min='1'
+                    value={listingDraft.price}
+                    onChange={(event) => setListingDraft((draft) => ({ ...draft, price: event.target.value }))}
+                    className='mt-1 w-full rounded-md border border-gray-300 bg-white/70 px-3 py-2 text-sm outline-none'
+                  />
+
+                  <label className='mt-4 block text-xs font-bold text-gray-700' htmlFor='listing-description'>
+                    Description
+                  </label>
+                  <textarea
+                    id='listing-description'
+                    rows={4}
+                    value={listingDraft.description}
+                    onChange={(event) => setListingDraft((draft) => ({ ...draft, description: event.target.value }))}
+                    className='mt-1 w-full rounded-md border border-gray-300 bg-white/70 px-3 py-2 text-sm outline-none'
+                  />
+
+                  <div className='mt-4 flex items-center gap-2'>
                     <CustomButton
                       type='filled'
-                      title='Open in editor'
-                      handleClick={() => handleOpenDesign(item)}
+                      title='List on marketplace'
+                      handleClick={handleConfirmListing}
                       customStyles='w-full py-2 text-xs font-semibold'
                     />
                     <CustomButton
                       type='outline'
-                      title='Delete'
-                      handleClick={() => handleDeleteDesign(item.id)}
+                      title='Cancel'
+                      handleClick={() => setListingDraft(null)}
                       customStyles='w-full py-2 text-xs font-semibold'
                     />
                   </div>
-                ))}
-              </div>
+                </motion.div>
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </motion.section>
       )}
     </AnimatePresence>

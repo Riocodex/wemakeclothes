@@ -188,7 +188,7 @@ const Customizer = () => {
 
   return (
     <AnimatePresence>
-      {!snap.intro && (
+      {!snap.intro && !snap.viewerOpen && (
         <>
           <motion.div
             key="custom"

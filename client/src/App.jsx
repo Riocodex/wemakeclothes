@@ -2,6 +2,8 @@ import Customizer from './pages/Customizer'
 import Canvas from './canvas'
 import Home from './pages/Home'
 import MyDesigns from './pages/MyDesigns'
+import Marketplace from './pages/Marketplace'
+import MarketplaceViewer from './pages/MarketplaceViewer'
 
 function App() {
   return (
@@ -9,6 +11,8 @@ function App() {
 
       <Home/>
       <MyDesigns/>
+      <Marketplace/>
+      <MarketplaceViewer/>
       <Canvas/>
       <Customizer/> 
     </main>
