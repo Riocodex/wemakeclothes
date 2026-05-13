@@ -144,10 +144,17 @@ export const deleteDesignById = (id) => {
   return next.length !== existing.length
 }
 
-export const listMarketplaceListings = () => [
-  ...readListings().map((item) => ({ ...item, isMine: true })),
-  ...SAMPLE_LISTINGS.map((item) => ({ ...item, isMine: false }))
-]
+const getPurchasedListingIds = () => new Set(readPurchases().map((item) => item.listingId))
+
+export const listMarketplaceListings = () => {
+  const purchasedListingIds = getPurchasedListingIds()
+  return [
+    ...readListings().map((item) => ({ ...item, isMine: true })),
+    ...SAMPLE_LISTINGS
+      .filter((item) => !purchasedListingIds.has(item.id))
+      .map((item) => ({ ...item, isMine: false }))
+  ]
+}
 
 export const getMarketplaceListingById = (id) =>
   listMarketplaceListings().find((item) => item.id === id) || null
@@ -192,6 +199,7 @@ export const deleteListingById = (id) => {
 }
 
 export const buyMarketplaceListing = (listingId) => {
+  if (getPurchasedListingIds().has(listingId)) return null
   const listing = listMarketplaceListings().find((item) => item.id === listingId)
   if (!listing || listing.isMine) return null
   const purchasedAt = new Date().toISOString()
