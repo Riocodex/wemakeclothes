@@ -1,7 +1,8 @@
 import mongoose from 'mongoose'
 
-import { Design } from '../models/index.js'
+import { Design, Listing } from '../models/index.js'
 import { HttpError, asyncHandler } from '../utils/httpError.js'
+import { serializeDesign } from '../utils/serializers.js'
 
 const normalizeDesignBody = (body) => {
   const design = body.design || body
@@ -23,22 +24,6 @@ const normalizeDesignBody = (body) => {
     sourceDesignId: body.sourceDesignId || null,
   }
 }
-
-const serializeDesign = (design) => ({
-  ...design.toJSON(),
-  design: {
-    version: 1,
-    catalogId: design.catalogId,
-    type: design.type,
-    sleeve: design.sleeve,
-    colors: design.colors,
-    textures: design.textures,
-    layers: design.layers,
-    isLogoTexture: design.isLogoTexture,
-    isFullTexture: design.isFullTexture,
-  },
-  previewImage: design.previewImageUrl,
-})
 
 const findOwnedDesign = async (userId, designId) => {
   if (!mongoose.isValidObjectId(designId)) {
@@ -96,6 +81,10 @@ export const getDesign = asyncHandler(async (req, res) => {
 
 export const deleteDesign = asyncHandler(async (req, res) => {
   const design = await findOwnedDesign(req.user.id, req.params.id)
+  await Listing.updateMany(
+    { designId: design.id, sellerId: req.user.id, status: 'active' },
+    { status: 'removed' }
+  )
   await design.deleteOne()
 
   res.status(200).json({

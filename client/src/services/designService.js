@@ -1,3 +1,5 @@
+import { apiClient, getAuthToken } from './apiClient'
+
 const STORAGE_KEY = 'wmc_designs_v1'
 const LISTINGS_KEY = 'wmc_marketplace_listings_v1'
 const PURCHASES_KEY = 'wmc_marketplace_purchases_v1'
@@ -114,7 +116,9 @@ const writePurchases = (items) => {
   localStorage.setItem(PURCHASES_KEY, JSON.stringify(items))
 }
 
-export const saveDesign = ({ title, design, previewImage, sceneTheme }) => {
+const hasBackendSession = () => Boolean(getAuthToken())
+
+const saveDesignLocally = ({ title, design, previewImage, sceneTheme }) => {
   const now = new Date().toISOString()
   const record = {
     id: crypto.randomUUID(),
@@ -132,11 +136,42 @@ export const saveDesign = ({ title, design, previewImage, sceneTheme }) => {
   return record
 }
 
-export const listDesigns = () => readAll()
+export const saveDesign = async ({ title, design, previewImage, sceneTheme }) => {
+  if (!hasBackendSession()) {
+    return saveDesignLocally({ title, design, previewImage, sceneTheme })
+  }
 
-export const getDesignById = (id) => readAll().find((item) => item.id === id) || null
+  const response = await apiClient.post('/designs', {
+    title,
+    design,
+    previewImage,
+    sceneTheme,
+  })
 
-export const deleteDesignById = (id) => {
+  return response.design
+}
+
+export const listDesigns = async () => {
+  if (!hasBackendSession()) return readAll()
+
+  const response = await apiClient.get('/designs')
+  return response.designs || []
+}
+
+export const getDesignById = async (id) => {
+  if (!hasBackendSession()) return readAll().find((item) => item.id === id) || null
+
+  const response = await apiClient.get(`/designs/${id}`)
+  return response.design || null
+}
+
+export const deleteDesignById = async (id) => {
+  if (hasBackendSession()) {
+    await apiClient.delete(`/designs/${id}`)
+    writeListings(readListings().filter((item) => item.sourceDesignId !== id))
+    return true
+  }
+
   const existing = readAll()
   const next = existing.filter((item) => item.id !== id)
   writeAll(next)
@@ -146,7 +181,12 @@ export const deleteDesignById = (id) => {
 
 const getPurchasedListingIds = () => new Set(readPurchases().map((item) => item.listingId))
 
-export const listMarketplaceListings = () => {
+export const listMarketplaceListings = async () => {
+  if (hasBackendSession()) {
+    const response = await apiClient.get('/listings')
+    return response.listings || []
+  }
+
   const purchasedListingIds = getPurchasedListingIds()
   return [
     ...readListings().map((item) => ({ ...item, isMine: true })),
@@ -156,17 +196,50 @@ export const listMarketplaceListings = () => {
   ]
 }
 
-export const getMarketplaceListingById = (id) =>
-  listMarketplaceListings().find((item) => item.id === id) || null
+export const getMarketplaceListingById = async (id) => {
+  if (hasBackendSession()) {
+    const response = await apiClient.get(`/listings/${id}`)
+    return response.listing || null
+  }
 
-export const listMyListings = () => readListings()
+  const listings = await listMarketplaceListings()
+  return listings.find((item) => item.id === id) || null
+}
 
-export const listPurchases = () => readPurchases()
+export const listMyListings = async () => {
+  if (hasBackendSession()) {
+    const response = await apiClient.get('/listings/mine')
+    return response.listings || []
+  }
 
-export const getListingBySourceDesignId = (sourceDesignId) =>
-  readListings().find((item) => item.sourceDesignId === sourceDesignId) || null
+  return readListings()
+}
 
-export const listDesignForSale = ({ savedDesign, price, description }) => {
+export const listPurchases = async () => {
+  if (hasBackendSession()) {
+    const response = await apiClient.get('/listings/purchases')
+    return response.purchases || []
+  }
+
+  return readPurchases()
+}
+
+export const getListingBySourceDesignId = async (sourceDesignId) => {
+  const listings = await listMyListings()
+  return listings.find((item) => item.sourceDesignId === sourceDesignId) || null
+}
+
+export const listDesignForSale = async ({ savedDesign, price, description }) => {
+  if (hasBackendSession()) {
+    const response = await apiClient.post('/listings', {
+      designId: savedDesign.id,
+      price,
+      description,
+    })
+
+    return response.listing
+  }
+
   const now = new Date().toISOString()
   const existing = readListings()
   const previous = existing.find((item) => item.sourceDesignId === savedDesign.id)
@@ -191,16 +264,26 @@ export const listDesignForSale = ({ savedDesign, price, description }) => {
   return listing
 }
 
-export const deleteListingById = (id) => {
+export const deleteListingById = async (id) => {
+  if (hasBackendSession()) {
+    await apiClient.delete(`/listings/${id}`)
+    return true
+  }
+
   const existing = readListings()
   const next = existing.filter((item) => item.id !== id)
   writeListings(next)
   return next.length !== existing.length
 }
 
-export const buyMarketplaceListing = (listingId) => {
+export const buyMarketplaceListing = async (listingId) => {
+  if (hasBackendSession()) {
+    return apiClient.post(`/listings/${listingId}/purchase`)
+  }
+
   if (getPurchasedListingIds().has(listingId)) return null
-  const listing = listMarketplaceListings().find((item) => item.id === listingId)
+  const listings = await listMarketplaceListings()
+  const listing = listings.find((item) => item.id === listingId)
   if (!listing || listing.isMine) return null
   const purchasedAt = new Date().toISOString()
   const purchaseRecord = {
@@ -211,7 +294,7 @@ export const buyMarketplaceListing = (listingId) => {
     price: listing.price,
     purchasedAt,
   }
-  const saved = saveDesign({
+  const saved = await saveDesign({
     title: `${listing.title} purchase`,
     design: JSON.parse(JSON.stringify(listing.design)),
     previewImage: listing.previewImage,

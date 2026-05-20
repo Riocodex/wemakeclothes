@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSnapshot } from 'valtio'
 
@@ -7,9 +7,9 @@ import { CustomButton } from '../components'
 import {
   deleteDesignById,
   deleteListingById,
-  getListingBySourceDesignId,
   listDesignForSale,
-  listDesigns
+  listDesigns,
+  listMyListings
 } from '../services/designService'
 import { migrateOrCreateDesign, syncRootFromDesign } from '../config/designSchema'
 import { slideAnimation } from '../config/motion'
@@ -18,7 +18,41 @@ const MyDesigns = () => {
   const snap = useSnapshot(state)
   const [refreshKey, setRefreshKey] = useState(0)
   const [listingDraft, setListingDraft] = useState(null)
-  const designsView = useMemo(() => listDesigns(), [snap.myDesignsOpen, refreshKey])
+  const [designsView, setDesignsView] = useState([])
+  const [myListings, setMyListings] = useState([])
+  const [loadingDesigns, setLoadingDesigns] = useState(false)
+  const [designsError, setDesignsError] = useState('')
+
+  useEffect(() => {
+    if (!snap.myDesignsOpen) return
+
+    let active = true
+    setLoadingDesigns(true)
+    setDesignsError('')
+
+    Promise.all([
+      listDesigns(),
+      listMyListings(),
+    ])
+      .then(([designItems, listingItems]) => {
+        if (!active) return
+        setDesignsView(designItems)
+        setMyListings(listingItems)
+      })
+      .catch((error) => {
+        if (active) {
+          setDesignsView([])
+          setDesignsError(error.message || 'Could not load designs.')
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingDesigns(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [snap.myDesignsOpen, refreshKey])
 
   const handleOpenDesign = (saved) => {
     state.design = migrateOrCreateDesign(saved.design)
@@ -42,12 +76,16 @@ const MyDesigns = () => {
     state.intro = false
   }
 
-  const handleDeleteDesign = (id) => {
+  const handleDeleteDesign = async (id) => {
     const ok = window.confirm('Delete this design permanently?')
     if (!ok) return
-    const deleted = deleteDesignById(id)
-    if (deleted) {
-      setRefreshKey((prev) => prev + 1)
+    try {
+      const deleted = await deleteDesignById(id)
+      if (deleted) {
+        setRefreshKey((prev) => prev + 1)
+      }
+    } catch (error) {
+      alert(error.message || 'Could not delete this design.')
     }
   }
 
@@ -59,28 +97,36 @@ const MyDesigns = () => {
     })
   }
 
-  const handleConfirmListing = () => {
+  const handleConfirmListing = async () => {
     if (!listingDraft?.item) return
     const price = Number(listingDraft.price)
     if (!Number.isFinite(price) || price <= 0) {
       alert('Please enter a valid price.')
       return
     }
-    listDesignForSale({
-      savedDesign: listingDraft.item,
-      price,
-      description: (listingDraft.description || '').trim()
-    })
-    setListingDraft(null)
-    alert('Design listed on the marketplace.')
-    setRefreshKey((prev) => prev + 1)
+    try {
+      await listDesignForSale({
+        savedDesign: listingDraft.item,
+        price,
+        description: (listingDraft.description || '').trim()
+      })
+      setListingDraft(null)
+      alert('Design listed on the marketplace.')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      alert(error.message || 'Could not list this design.')
+    }
   }
 
-  const handleUnlistDesign = (listing) => {
+  const handleUnlistDesign = async (listing) => {
     const ok = window.confirm('Remove this design from the marketplace?')
     if (!ok) return
-    deleteListingById(listing.id)
-    setRefreshKey((prev) => prev + 1)
+    try {
+      await deleteListingById(listing.id)
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      alert(error.message || 'Could not remove this listing.')
+    }
   }
 
   return (
@@ -106,16 +152,28 @@ const MyDesigns = () => {
           </div>
 
           <div className='mt-6 w-[min(92vw,980px)] max-h-[72vh] overflow-auto pr-1'>
-            {designsView.length === 0 && (
+            {loadingDesigns && (
+              <div className='glassmorphism rounded-xl p-6 text-sm text-gray-700'>
+                Loading saved designs...
+              </div>
+            )}
+
+            {!loadingDesigns && designsError && (
+              <div className='glassmorphism rounded-xl p-6 text-sm text-red-700'>
+                {designsError}
+              </div>
+            )}
+
+            {!loadingDesigns && !designsError && designsView.length === 0 && (
               <div className='glassmorphism rounded-xl p-6 text-sm text-gray-700'>
                 No saved designs yet. Open the customizer and click `Save Design` first.
               </div>
             )}
 
-            {designsView.length > 0 && (
+            {!loadingDesigns && !designsError && designsView.length > 0 && (
               <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
                 {designsView.map((item) => {
-                  const listing = getListingBySourceDesignId(item.id)
+                  const listing = myListings.find((listingItem) => listingItem.sourceDesignId === item.id)
                   return (
                     <div key={item.id} className='glassmorphism rounded-xl p-3 flex flex-col gap-3'>
                       <div className='rounded-lg overflow-hidden bg-gray-100 h-40'>

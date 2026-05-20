@@ -7,14 +7,18 @@ import { errorHandler, notFound } from './middleware/errorHandler.js'
 import './models/index.js'
 import authRoutes from './routes/authRoutes.js'
 import designRoutes from './routes/designRoutes.js'
+import listingRoutes from './routes/listingRoutes.js'
 
 dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
+const CLIENT_URLS = (process.env.CLIENT_URL || 'http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map((url) => url.trim())
+  .filter(Boolean)
 
-app.use(cors({ origin: CLIENT_URL, credentials: true }))
+app.use(cors({ origin: CLIENT_URLS, credentials: true }))
 app.use(express.json({ limit: '10mb' }))
 
 app.get('/', (_req, res) => {
@@ -34,6 +38,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/auth', authRoutes)
 app.use('/api/designs', designRoutes)
+app.use('/api/listings', listingRoutes)
 
 app.use(notFound)
 app.use(errorHandler)

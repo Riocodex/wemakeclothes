@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSnapshot } from 'valtio'
 
@@ -90,18 +90,51 @@ const MarketplaceCard = ({ item, onBuy, onView, onUnlist }) => (
 const Marketplace = () => {
   const snap = useSnapshot(state)
   const [activeView, setActiveView] = useState('shop')
-  const [, setRefreshKey] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [listings, setListings] = useState([])
+  const [myListings, setMyListings] = useState([])
+  const [purchases, setPurchases] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const listings = listMarketplaceListings()
-  const myListings = listMyListings()
-  const purchases = listPurchases()
   const visibleListings = activeView === 'mine' ? listings.filter((item) => item.isMine) : listings
 
-  const handleViewListing = (item) => {
-    const listing = getMarketplaceListingById(item.id)
+  useEffect(() => {
+    if (!snap.marketplaceOpen) return
+
+    let active = true
+    setLoading(true)
+    setError('')
+
+    Promise.all([
+      listMarketplaceListings(),
+      listMyListings(),
+      listPurchases(),
+    ])
+      .then(([marketplaceItems, myItems, purchaseItems]) => {
+        if (!active) return
+        setListings(marketplaceItems)
+        setMyListings(myItems)
+        setPurchases(purchaseItems)
+      })
+      .catch((err) => {
+        if (!active) return
+        setError(err.message || 'Could not load marketplace.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [snap.marketplaceOpen, refreshKey])
+
+  const handleViewListing = async (item) => {
+    const listing = item.design ? item : await getMarketplaceListingById(item.id)
     if (!listing) return
-    state.design = migrateOrCreateDesign(item.design)
-    if (item.sceneTheme) state.sceneTheme = item.sceneTheme
+    state.design = migrateOrCreateDesign(listing.design)
+    if (listing.sceneTheme) state.sceneTheme = listing.sceneTheme
     syncRootFromDesign(state)
     state.viewerListing = listing
     state.viewerOpen = true
@@ -110,23 +143,31 @@ const Marketplace = () => {
     state.intro = false
   }
 
-  const handleBuy = (item) => {
+  const handleBuy = async (item) => {
     const ok = window.confirm(`Buy "${item.title}" for ${formatPrice(item.price)}?`)
     if (!ok) return
-    const result = buyMarketplaceListing(item.id)
-    if (!result) {
-      alert('This listing could not be purchased.')
-      return
+    try {
+      const result = await buyMarketplaceListing(item.id)
+      if (!result) {
+        alert('This listing could not be purchased.')
+        return
+      }
+      alert('Purchased. A copy has been added to My Designs.')
+      setRefreshKey((prev) => prev + 1)
+    } catch (error) {
+      alert(error.message || 'This listing could not be purchased.')
     }
-    alert('Purchased. A copy has been added to My Designs.')
-    setRefreshKey((prev) => prev + 1)
   }
 
-  const handleUnlist = (item) => {
+  const handleUnlist = async (item) => {
     const ok = window.confirm(`Remove "${item.title}" from the marketplace?`)
     if (!ok) return
-    deleteListingById(item.id)
-    setRefreshKey((prev) => prev + 1)
+    try {
+      await deleteListingById(item.id)
+      setRefreshKey((prev) => prev + 1)
+    } catch (err) {
+      alert(err.message || 'Could not remove this listing.')
+    }
   }
 
   return (
@@ -176,13 +217,25 @@ const Marketplace = () => {
           </div>
 
           <div className="mt-5 w-[min(92vw,1080px)] max-h-[68vh] overflow-auto pr-1">
-            {activeView !== 'purchases' && visibleListings.length === 0 && (
+            {loading && (
+              <div className="glassmorphism rounded-xl p-6 text-sm text-gray-700">
+                Loading marketplace...
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="glassmorphism rounded-xl p-6 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {!loading && !error && activeView !== 'purchases' && visibleListings.length === 0 && (
               <div className="glassmorphism rounded-xl p-6 text-sm text-gray-700">
                 No listings yet. Open My Designs and list one of your saved designs.
               </div>
             )}
 
-            {activeView !== 'purchases' && visibleListings.length > 0 && (
+            {!loading && !error && activeView !== 'purchases' && visibleListings.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {visibleListings.map((item) => (
                   <MarketplaceCard
@@ -196,13 +249,13 @@ const Marketplace = () => {
               </div>
             )}
 
-            {activeView === 'purchases' && purchases.length === 0 && (
+            {!loading && !error && activeView === 'purchases' && purchases.length === 0 && (
               <div className="glassmorphism rounded-xl p-6 text-sm text-gray-700">
                 No purchases yet. Buy a marketplace design to add it to your saved designs.
               </div>
             )}
 
-            {activeView === 'purchases' && purchases.length > 0 && (
+            {!loading && !error && activeView === 'purchases' && purchases.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {purchases.map((item) => (
                   <div key={item.id} className="glassmorphism rounded-xl p-4">

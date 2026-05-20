@@ -4,11 +4,13 @@ import Home from './pages/Home'
 import MyDesigns from './pages/MyDesigns'
 import Marketplace from './pages/Marketplace'
 import MarketplaceViewer from './pages/MarketplaceViewer'
+import AuthPanel from './components/AuthPanel'
 
 function App() {
   return (
     <main className='app transition-all ease-in'>
 
+      <AuthPanel/>
       <Home/>
       <MyDesigns/>
       <Marketplace/>

@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSnapshot } from 'valtio';
 
-import config from '../config/config';
 import state from '../store';
-import { download } from '../assets';
-import { captureCanvasPreview, downloadCanvasToImage, reader } from '../config/helpers';
+import { captureCanvasPreview, reader } from '../config/helpers';
 import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants';
 import { fadeAnimation, slideAnimation } from '../config/motion';
 import { GARMENT_OPTIONS } from '../config/garments';
@@ -160,7 +158,7 @@ const Customizer = () => {
     setIsGarmentPickerOpen(false)
   }
 
-  const handleSaveDesign = () => {
+  const handleSaveDesign = async () => {
     if (!snap.design || savingDesign) return
     const inputName = window.prompt('Enter a name for this design:')
     const trimmedName = (inputName || '').trim()
@@ -171,7 +169,7 @@ const Customizer = () => {
     setSavingDesign(true)
     try {
       const previewImage = captureCanvasPreview()
-      const saved = saveDesign({
+      const saved = await saveDesign({
         title: trimmedName,
         design: JSON.parse(JSON.stringify(snap.design)),
         previewImage,
@@ -179,7 +177,7 @@ const Customizer = () => {
       })
 
       alert(`Design saved successfully. ID: ${saved.id.slice(0, 8)}`)
-    } catch (error) {
+    } catch {
       alert('Could not save design. Please try again.')
     } finally {
       setSavingDesign(false)
