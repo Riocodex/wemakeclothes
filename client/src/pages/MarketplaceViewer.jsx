@@ -20,17 +20,21 @@ const MarketplaceViewer = () => {
     state.intro = true
   }
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     if (!listing || listing.isMine) return
     const ok = window.confirm(`Buy "${listing.title}" for ${formatPrice(listing.price)}?`)
     if (!ok) return
-    const result = buyMarketplaceListing(listing.id)
-    if (!result) {
-      alert('This listing could not be purchased.')
-      return
+    try {
+      const result = await buyMarketplaceListing(listing.id)
+      if (!result) {
+        alert('This listing could not be purchased.')
+        return
+      }
+      alert('Purchased. A copy has been added to My Designs.')
+      handleBack()
+    } catch (error) {
+      alert(error.message || 'This listing could not be purchased.')
     }
-    alert('Purchased. A copy has been added to My Designs.')
-    handleBack()
   }
 
   return (

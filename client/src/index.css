@@ -90,3 +90,53 @@ input[type="file"] {
 .sketch-picker > div:nth-child(3) {
   display: none !important;
 }
+
+@media (max-width: 767px) {
+  .home-landing {
+    width: 100%;
+    height: 100%;
+    padding: 1rem;
+    pointer-events: none;
+  }
+
+  .home-landing header {
+    display: none;
+  }
+
+  .home-landing .home-content {
+    width: 100%;
+    flex: none;
+    gap: 0;
+    padding-top: 4.5rem;
+  }
+
+  .home-landing .head-text {
+    font-size: clamp(2.75rem, 15vw, 4.75rem);
+    line-height: 0.96;
+    max-width: 72vw;
+  }
+
+  .home-landing .home-copy {
+    display: none;
+  }
+
+  .home-landing .home-actions {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    z-index: 20;
+    flex-direction: row;
+    gap: 0.5rem;
+    pointer-events: auto;
+  }
+
+  .home-landing .home-actions button {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+    white-space: nowrap;
+    padding: 0.65rem 0.45rem;
+    font-size: 0.72rem;
+  }
+}

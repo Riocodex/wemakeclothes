@@ -17,7 +17,7 @@ const Home = () => {
   return (
    <AnimatePresence>
     {snap.intro && !snap.myDesignsOpen && !snap.marketplaceOpen && !snap.viewerOpen && (
-        <motion.section className='home'{...slideAnimation('left')}>
+        <motion.section className='home home-landing'{...slideAnimation('left')}>
             <motion.header{...slideAnimation("down")}>
                 <img
                     src="./me.jpg"
@@ -33,9 +33,9 @@ const Home = () => {
                 </motion.div>
                 <motion.div
                     {...headContentAnimation}
-                    className='flex flex-col gap-5'
+                    className='home-actions flex flex-col gap-5'
                 >
-                    <p className='max-w-md font-normal text-gray-600 text-base'>Create your unique and exclusive shirt with our brand-new 3D customization tool.<strong>Unleash your imagination</strong>{" "} and define your own style.</p>
+                    <p className='home-copy max-w-md font-normal text-gray-600 text-base'>Create your unique and exclusive shirt with our brand-new 3D customization tool.<strong>Unleash your imagination</strong>{" "} and define your own style.</p>
                     <CustomButton
                         type="filled"
                         title="Customize It"
