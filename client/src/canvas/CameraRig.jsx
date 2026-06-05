@@ -35,5 +35,4 @@ const CameraRig = ({ children }) => {
     <group>{children}</group>
   )
 }
-
 export default CameraRig

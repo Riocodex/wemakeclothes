@@ -132,12 +132,12 @@ const MyDesigns = () => {
   return (
     <AnimatePresence>
       {snap.intro && snap.myDesignsOpen && !snap.marketplaceOpen && (
-        <motion.section className='home' {...slideAnimation('right')}>
-          <div className='w-full flex items-center justify-between'>
+        <motion.section className='home app-list-page my-designs-panel' {...slideAnimation('right')}>
+          <div className='app-list-page-header w-full flex items-center justify-between'>
             <h2 className='text-2xl font-black text-black'>My Designs</h2>
           </div>
 
-          <div className='mt-6 w-[min(92vw,980px)] max-h-[72vh] overflow-auto pr-1'>
+          <div className='app-page-scroll w-[min(92vw,980px)] max-h-[72vh] overflow-auto pr-1'>
             {loadingDesigns && (
               <div className='glassmorphism rounded-xl p-6 text-sm text-gray-700'>
                 Loading saved designs...

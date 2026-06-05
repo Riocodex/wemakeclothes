@@ -1,7 +1,13 @@
+import { useEffect, useState } from 'react'
 import { useSnapshot } from 'valtio'
 
 import state from '../store'
 import { CustomButton } from './index'
+import {
+  AUTH_CHANGE_EVENT,
+  getCurrentStoredUser,
+  logoutUser,
+} from '../services/authService'
 
 const getView = (snap) => {
   if (snap.viewerOpen) return 'viewer'
@@ -72,6 +78,20 @@ const AppNav = () => {
   const snap = useSnapshot(state)
   const view = getView(snap)
   const showNav = view !== 'home'
+  const [user, setUser] = useState(() => getCurrentStoredUser())
+  const showMobileLogout =
+    user && (view === 'marketplace' || view === 'myDesigns')
+
+  useEffect(() => {
+    const syncUser = () => setUser(getCurrentStoredUser())
+    window.addEventListener(AUTH_CHANGE_EVENT, syncUser)
+    return () => window.removeEventListener(AUTH_CHANGE_EVENT, syncUser)
+  }, [])
+
+  const handleLogout = () => {
+    logoutUser()
+    setUser(null)
+  }
 
   if (!showNav) return null
 
@@ -121,6 +141,15 @@ const AppNav = () => {
           customStyles="app-nav-btn"
         />
       ))}
+      {showMobileLogout && (
+        <button
+          type="button"
+          className="app-nav-logout"
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
+      )}
     </nav>
   )
 }

@@ -173,8 +173,8 @@ const Marketplace = () => {
   return (
     <AnimatePresence>
       {snap.intro && snap.marketplaceOpen && (
-        <motion.section className="home marketplace-panel" {...slideAnimation('right')}>
-          <div className="w-full flex flex-wrap items-center justify-between gap-3">
+        <motion.section className="home marketplace-panel app-list-page" {...slideAnimation('right')}>
+          <div className="app-list-page-header w-full flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-black text-black">Marketplace</h2>
               <p className="text-sm text-gray-600">Browse, buy, and manage listed clothing designs.</p>
@@ -202,7 +202,7 @@ const Marketplace = () => {
             />
           </div>
 
-          <div className="mt-5 w-[min(92vw,1080px)] max-h-[68vh] overflow-auto pr-1">
+          <div className="app-page-scroll w-[min(92vw,1080px)] max-h-[68vh] overflow-auto pr-1">
             {loading && (
               <div className="glassmorphism rounded-xl p-6 text-sm text-gray-700">
                 Loading marketplace...

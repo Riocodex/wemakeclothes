@@ -76,18 +76,23 @@ const AuthPanel = () => {
 
   if (!snap.intro) return null
 
+  const hasPageNav = snap.marketplaceOpen || snap.myDesignsOpen
+  const hideOnMobilePageNav = hasPageNav && user
+
   return (
-    <div className="absolute right-5 top-5 z-30 w-[min(92vw,340px)]">
-      <div className="flex justify-end">
+    <div
+      className={`auth-panel ${hideOnMobilePageNav ? 'auth-panel--mobile-hidden' : ''}`}
+    >
+      <div className="auth-panel-actions">
         {user ? (
-          <div className="glassmorphism rounded-lg px-3 py-2 flex items-center gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-black text-gray-950 truncate">{user.name}</p>
-              <p className="text-[11px] text-gray-600 truncate">{user.email}</p>
+          <div className="auth-panel-user glassmorphism">
+            <div className="auth-panel-user-info min-w-0">
+              <p className="auth-panel-name truncate">{user.name}</p>
+              <p className="auth-panel-email truncate">{user.email}</p>
             </div>
             <button
               type="button"
-              className="rounded-md border border-gray-300 bg-white/60 px-3 py-1.5 text-xs font-bold text-gray-800"
+              className="auth-panel-logout"
               onClick={handleLogout}
             >
               Logout
@@ -96,7 +101,7 @@ const AuthPanel = () => {
         ) : (
           <button
             type="button"
-            className="rounded-md border border-gray-300 bg-white/70 px-4 py-2 text-sm font-black text-gray-900 shadow-sm"
+            className="auth-panel-account"
             onClick={() => setOpen((current) => !current)}
           >
             Account

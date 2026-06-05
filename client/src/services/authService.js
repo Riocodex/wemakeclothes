@@ -6,9 +6,16 @@ import {
   setAuthSession,
 } from './apiClient'
 
+export const AUTH_CHANGE_EVENT = 'wmc-auth-change'
+
+const notifyAuthChange = () => {
+  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT))
+}
+
 const storeAuthResponse = (response) => {
   if (response?.token && response?.user) {
     setAuthSession(response)
+    notifyAuthChange()
   }
 
   return response
@@ -29,6 +36,7 @@ export const fetchCurrentUser = async () => {
 
   if (response?.user) {
     setAuthSession({ user: response.user })
+    notifyAuthChange()
   }
 
   return response
@@ -36,6 +44,7 @@ export const fetchCurrentUser = async () => {
 
 export const logoutUser = () => {
   clearAuthSession()
+  notifyAuthChange()
 }
 
 export const getCurrentStoredUser = () => getStoredUser()
