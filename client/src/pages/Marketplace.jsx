@@ -179,20 +179,6 @@ const Marketplace = () => {
               <h2 className="text-2xl font-black text-black">Marketplace</h2>
               <p className="text-sm text-gray-600">Browse, buy, and manage listed clothing designs.</p>
             </div>
-            <div className="flex items-center gap-2">
-              <CustomButton
-                type="outline"
-                title="My Designs"
-                handleClick={() => { state.marketplaceOpen = false; state.myDesignsOpen = true }}
-                customStyles="w-fit px-4 py-2 text-sm font-bold"
-              />
-              <CustomButton
-                type="outline"
-                title="Back"
-                handleClick={() => { state.marketplaceOpen = false }}
-                customStyles="w-fit px-4 py-2 text-sm font-bold"
-              />
-            </div>
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">

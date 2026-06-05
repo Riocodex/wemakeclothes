@@ -35,6 +35,10 @@ html {
   @apply w-14 h-14 flex justify-center items-center rounded-full glassmorphism cursor-pointer outline-none;
 }
 
+.app-nav {
+  @apply absolute z-30 top-5 left-1/2 flex -translate-x-1/2 items-center justify-center gap-2;
+}
+
 .editortabs-container {
   @apply glassmorphism w-16 border-[2px] rounded-lg flex flex-col justify-center items-center ml-1 py-4 gap-4;
 }

@@ -135,20 +135,6 @@ const MyDesigns = () => {
         <motion.section className='home' {...slideAnimation('right')}>
           <div className='w-full flex items-center justify-between'>
             <h2 className='text-2xl font-black text-black'>My Designs</h2>
-            <div className='flex items-center gap-2'>
-              <CustomButton
-                type='outline'
-                title='Marketplace'
-                handleClick={() => { state.myDesignsOpen = false; state.marketplaceOpen = true }}
-                customStyles='w-fit px-4 py-2 text-sm font-bold'
-              />
-              <CustomButton
-                type='outline'
-                title='Back'
-                handleClick={() => { state.myDesignsOpen = false }}
-                customStyles='w-fit px-4 py-2 text-sm font-bold'
-              />
-            </div>
           </div>
 
           <div className='mt-6 w-[min(92vw,980px)] max-h-[72vh] overflow-auto pr-1'>
