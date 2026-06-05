@@ -5,37 +5,40 @@ import { useSnapshot } from 'valtio'
 
 import Shirt from './Shirt'
 import CameraRig from './CameraRig'
+import Backdrop from './Backdrop'
 import state from '../store'
+
+const SCENE_BACKGROUNDS = {
+  light: '#ffffff',
+  dark: '#111827',
+}
 
 const CanvasModel = () => {
   const snap = useSnapshot(state)
-
-  const themeMap = {
-    light: { background: '#dbe4ee', environment: 'apartment' },
-    dark: { background: '#111827', environment: 'night' },
-    // Backward compatible with older saved state values.
-    neutral: { background: '#dbe4ee', environment: 'apartment' },
-  }
-
-  const activeTheme = themeMap[snap.sceneTheme] || themeMap.light
+  const isCustomizer = !snap.intro && !snap.viewerOpen
+  const isMarketplaceView = snap.viewerOpen
+  const allowLightBackground =
+    snap.sceneTheme === 'light' && (isCustomizer || isMarketplaceView)
+  const background = allowLightBackground
+    ? SCENE_BACKGROUNDS.light
+    : SCENE_BACKGROUNDS.dark
 
   return (
     <Canvas
       shadows
-      camera={{ position:[0,0,0], fov:30}}//making the shirt bigger
-
-      //working on te buffers
-      gl={{preserveDrawingBuffer: true}}
-      className='w-full-max-full h-full transition-all ease-in'
+      camera={{ position: [0, 0, 0], fov: 30 }}
+      gl={{ preserveDrawingBuffer: true }}
+      className="w-full-max-full h-full transition-all ease-in"
     >
-      <color attach='background' args={[activeTheme.background]} />
-      <ambientLight intensity={0.5}/>
-      <Environment preset={activeTheme.environment}/>
+      <color attach="background" args={[background]} />
+      <ambientLight intensity={0.5} />
+      <Environment preset="city" />
 
       <CameraRig>
+        <Backdrop />
         <Center>
-            <Shirt/>
-          </Center>
+          <Shirt />
+        </Center>
       </CameraRig>
     </Canvas>
   )

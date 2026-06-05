@@ -8,9 +8,18 @@ import { fadeAnimation } from '../config/motion'
 
 const formatPrice = (value) => `$${Number(value || 0).toFixed(0)}`
 
+const themeButtons = [
+  { name: 'light', label: 'Light' },
+  { name: 'dark', label: 'Dark' },
+]
+
 const MarketplaceViewer = () => {
   const snap = useSnapshot(state)
   const listing = snap.viewerListing
+
+  const handleThemeChange = (themeName) => {
+    state.sceneTheme = themeName
+  }
 
   const handleBack = () => {
     state.viewerOpen = false
@@ -18,6 +27,7 @@ const MarketplaceViewer = () => {
     state.marketplaceOpen = true
     state.myDesignsOpen = false
     state.intro = true
+    state.sceneTheme = 'dark'
   }
 
   const handleBuy = async () => {
@@ -58,6 +68,17 @@ const MarketplaceViewer = () => {
             className="absolute z-10 top-5 right-5 flex items-center gap-2"
             {...fadeAnimation}
           >
+            <div className="glassmorphism rounded-lg px-2 py-1.5 flex items-center gap-1.5">
+              {themeButtons.map((theme) => (
+                <CustomButton
+                  key={theme.name}
+                  type={snap.sceneTheme === theme.name ? 'filled' : 'outline'}
+                  title={theme.label}
+                  handleClick={() => handleThemeChange(theme.name)}
+                  customStyles="w-fit px-3 py-1.5 text-xs font-semibold"
+                />
+              ))}
+            </div>
             {!listing.isMine && (
               <CustomButton
                 type="filled"

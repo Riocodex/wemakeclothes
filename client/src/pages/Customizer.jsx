@@ -28,8 +28,8 @@ const Customizer = () => {
   const [isGarmentPickerOpen, setIsGarmentPickerOpen] = useState(false)
   const selectedGarment = snap.design?.catalogId || 'tshirt_short'
   const themeButtons = [
-    { name: 'dark', label: 'Dark' },
     { name: 'light', label: 'Light' },
+    { name: 'dark', label: 'Dark' },
   ]
 
   // show tab content depending on the activeTab

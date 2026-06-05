@@ -17,6 +17,7 @@ const goHome = () => {
   state.marketplaceOpen = false
   state.viewerOpen = false
   state.viewerListing = null
+  state.sceneTheme = 'dark'
 }
 
 const goCreate = () => {
@@ -25,6 +26,7 @@ const goCreate = () => {
   state.marketplaceOpen = false
   state.viewerOpen = false
   state.viewerListing = null
+  state.sceneTheme = 'dark'
 }
 
 const goMarketplace = () => {
@@ -33,6 +35,7 @@ const goMarketplace = () => {
   state.marketplaceOpen = true
   state.viewerOpen = false
   state.viewerListing = null
+  state.sceneTheme = 'dark'
 }
 
 const goMyDesigns = () => {
@@ -41,6 +44,7 @@ const goMyDesigns = () => {
   state.marketplaceOpen = false
   state.viewerOpen = false
   state.viewerListing = null
+  state.sceneTheme = 'dark'
 }
 
 const goBack = (view) => {
