@@ -16,8 +16,8 @@ const Home = () => {
 
   return (
    <AnimatePresence>
-    {snap.intro && (
-        <motion.section className='home'{...slideAnimation('left')}>
+    {snap.intro && !snap.myDesignsOpen && !snap.marketplaceOpen && !snap.viewerOpen && (
+        <motion.section className='home home-landing'{...slideAnimation('left')}>
             <motion.header{...slideAnimation("down")}>
                 <img
                     src="./me.jpg"
@@ -33,13 +33,25 @@ const Home = () => {
                 </motion.div>
                 <motion.div
                     {...headContentAnimation}
-                    className='flex flex-col gap-5'
+                    className='home-actions flex flex-col gap-5'
                 >
-                    <p className='max-w-md font-normal text-gray-600 text-base'>Create your unique and exclusive shirt with our brand-new 3D customization tool.<strong>Unleash your imagination</strong>{" "} and define your own style.</p>
+                    <p className='home-copy max-w-md font-normal text-gray-600 text-base'>Create your unique and exclusive shirt with our brand-new 3D customization tool.<strong>Unleash your imagination</strong>{" "} and define your own style.</p>
                     <CustomButton
                         type="filled"
                         title="Customize It"
-                        handleClick={()=> state.intro = false}
+                        handleClick={()=> { state.myDesignsOpen = false; state.marketplaceOpen = false; state.viewerOpen = false; state.intro = false }}
+                        customStyles="w-fit px-4 py-2.5 font-bold text-sm"
+                    />
+                    <CustomButton
+                        type="outline"
+                        title="My Designs"
+                        handleClick={() => { state.myDesignsOpen = true; state.marketplaceOpen = false }}
+                        customStyles="w-fit px-4 py-2.5 font-bold text-sm"
+                    />
+                    <CustomButton
+                        type="outline"
+                        title="Marketplace"
+                        handleClick={() => { state.marketplaceOpen = true; state.myDesignsOpen = false }}
                         customStyles="w-fit px-4 py-2.5 font-bold text-sm"
                     />
                 </motion.div>

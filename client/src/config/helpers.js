@@ -10,6 +10,16 @@ export const downloadCanvasToImage = () => {
   document.body.removeChild(link);
 };
 
+export const captureCanvasPreview = () => {
+  const canvas = document.querySelector("canvas");
+  if (!canvas) return null;
+  try {
+    return canvas.toDataURL("image/png");
+  } catch (error) {
+    return null;
+  }
+};
+
 export const reader = (file) =>
   new Promise((resolve, reject) => {
     const fileReader = new FileReader();

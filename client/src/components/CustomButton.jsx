@@ -7,17 +7,18 @@ import { getContrastingColor } from '../config/helpers'
 
 const CustomButton = ({ type, title, customStyles, handleClick }) => {
     const snap = useSnapshot(state);
+    const activeColor = snap.design?.colors?.body || snap.color
     const generateStyle = (type)=>{
         if(type === "filled"){
             return{
-                backgroundColor:snap.color,
-                color:getContrastingColor(snap.color)//this cchecks if the image is white and makes the text more visible
+                backgroundColor:activeColor,
+                color:getContrastingColor(activeColor)//this cchecks if the image is white and makes the text more visible
             }
         }else if (type==="outline"){
             return{
                 borderWidth:'1px',
-                borderColor:snap.color,
-                color:snap.color,
+                borderColor:activeColor,
+                color:activeColor,
             }
         }
     }
