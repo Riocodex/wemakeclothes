@@ -16,6 +16,8 @@ const themeButtons = [
 const MarketplaceViewer = () => {
   const snap = useSnapshot(state)
   const listing = snap.viewerListing
+  const isLightScene = snap.sceneTheme === 'light'
+  const panelTheme = isLightScene ? 'light' : 'dark'
 
   const handleThemeChange = (themeName) => {
     state.sceneTheme = themeName
@@ -50,33 +52,25 @@ const MarketplaceViewer = () => {
   return (
     <AnimatePresence>
       {snap.viewerOpen && listing && (
-        <>
+        <div className="product-viewer" aria-live="polite">
           <motion.div
-            className="absolute z-10 top-5 left-5 glassmorphism rounded-xl p-4 max-w-[min(86vw,360px)]"
+            className="product-viewer-toolbar"
             {...fadeAnimation}
           >
-            <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600">
-              Marketplace preview
-            </p>
-            <h2 className="mt-1 text-xl font-black text-gray-950">{listing.title}</h2>
-            <p className="mt-1 text-sm text-gray-700">by {listing.sellerName}</p>
-            <p className="mt-3 text-sm text-gray-700">{listing.description}</p>
-            <p className="mt-3 text-lg font-black text-gray-950">{formatPrice(listing.price)}</p>
-          </motion.div>
-
-          <motion.div
-            className="absolute z-10 top-5 right-5 flex items-center gap-2"
-            {...fadeAnimation}
-          >
-            <div className="glassmorphism rounded-lg px-2 py-1.5 flex items-center gap-1.5">
+            <div className={`product-viewer-chip product-viewer-chip--${panelTheme}`}>
               {themeButtons.map((theme) => (
-                <CustomButton
+                <button
                   key={theme.name}
-                  type={snap.sceneTheme === theme.name ? 'filled' : 'outline'}
-                  title={theme.label}
-                  handleClick={() => handleThemeChange(theme.name)}
-                  customStyles="w-fit px-3 py-1.5 text-xs font-semibold"
-                />
+                  type="button"
+                  className={`product-viewer-theme-btn ${
+                    snap.sceneTheme === theme.name
+                      ? 'product-viewer-theme-btn--active'
+                      : ''
+                  }`}
+                  onClick={() => handleThemeChange(theme.name)}
+                >
+                  {theme.label}
+                </button>
               ))}
             </div>
             {!listing.isMine && (
@@ -84,11 +78,24 @@ const MarketplaceViewer = () => {
                 type="filled"
                 title="Buy design"
                 handleClick={handleBuy}
-                customStyles="w-fit px-4 py-2.5 font-bold text-sm"
+                customStyles="w-fit min-h-[2.5rem] px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold shrink-0"
               />
             )}
           </motion.div>
-        </>
+
+          <motion.div
+            className={`product-viewer-details product-viewer-details--${panelTheme}`}
+            {...fadeAnimation}
+          >
+            <p className="product-viewer-eyebrow">Marketplace preview</p>
+            <h2 className="product-viewer-title">{listing.title}</h2>
+            <p className="product-viewer-meta">by {listing.sellerName}</p>
+            {listing.description ? (
+              <p className="product-viewer-description">{listing.description}</p>
+            ) : null}
+            <p className="product-viewer-price">{formatPrice(listing.price)}</p>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   )

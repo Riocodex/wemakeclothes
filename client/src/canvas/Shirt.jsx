@@ -13,9 +13,20 @@ const defaultFullDecal = { position: [0, 0, 0], rotation: [0, 0, 0], scale: 1 }
 const getBodyColor = (snap) =>
   snap.design?.colors?.body || snap.color || '#EFBD48'
 
-/** Original high-quality shirt path: baked GLB + lambert1 material */
-const ClassicShirt = ({ snap, garmentConfig, nodes, materials }) => {
+const createShirtMaterial = (color) =>
+  new THREE.MeshStandardMaterial({
+    color,
+    roughness: 1,
+    metalness: 0,
+    side: THREE.DoubleSide,
+  })
+
+const ClassicShirt = ({ snap, garmentConfig, nodes }) => {
   const shirtRef = useRef()
+  const shirtMaterial = useMemo(() => createShirtMaterial(getBodyColor(snap)), [])
+
+  useEffect(() => () => shirtMaterial.dispose(), [shirtMaterial])
+
   const dragState = useRef({
     isDragging: false,
     lastX: 0,
@@ -38,9 +49,7 @@ const ClassicShirt = ({ snap, garmentConfig, nodes, materials }) => {
   })
 
   useFrame((_, delta) => {
-    if (materials.lambert1) {
-      easing.dampC(materials.lambert1.color, getBodyColor(snap), 0.25, delta)
-    }
+    easing.dampC(shirtMaterial.color, getBodyColor(snap), 0.25, delta)
     if (shirtRef.current) {
       easing.dampE(
         shirtRef.current.rotation,
@@ -91,8 +100,7 @@ const ClassicShirt = ({ snap, garmentConfig, nodes, materials }) => {
       <mesh
         castShadow
         geometry={nodes.T_Shirt_male.geometry}
-        material={materials.lambert1}
-        material-roughness={1}
+        material={shirtMaterial}
         dispose={null}
         {...pointer}
       >
@@ -110,8 +118,6 @@ const ClassicShirt = ({ snap, garmentConfig, nodes, materials }) => {
             rotation={logoCfg.rotation}
             scale={logoCfg.scale}
             map={logoTexture}
-            depthTest={false}
-            depthWrite
           />
         )}
       </mesh>
@@ -123,19 +129,13 @@ const Shirt = () => {
   const snap = useSnapshot(state)
   const catalogId = snap.design?.catalogId || 'tshirt_short'
   const garmentConfig = GARMENT_CATALOG[catalogId] || GARMENT_CATALOG.tshirt_short
-  const { nodes, materials, scene } = useGLTF(garmentConfig.modelPath)
+  const { nodes, materials } = useGLTF(garmentConfig.modelPath)
 
   const useClassic =
     nodes?.T_Shirt_male?.geometry && materials?.lambert1
 
   const fallbackMaterial = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: getBodyColor(snap),
-        roughness: 1,
-        metalness: 0,
-        side: THREE.DoubleSide,
-      }),
+    () => createShirtMaterial(getBodyColor(snap)),
     [snap.design?.colors?.body, snap.color]
   )
 
@@ -147,12 +147,10 @@ const Shirt = () => {
         snap={snap}
         garmentConfig={garmentConfig}
         nodes={nodes}
-        materials={materials}
       />
     )
   }
 
-  // Fallback when a garment GLB has a different structure (no T_Shirt_male / lambert1)
   const shirtRef = useRef()
   const firstMesh = useMemo(() => {
     const n = garmentConfig.meshName && nodes[garmentConfig.meshName]

@@ -61,6 +61,13 @@ const goBack = (view) => {
   goHome()
 }
 
+const NavLabel = ({ full, short }) => (
+  <>
+    <span className="app-nav-label app-nav-label--full">{full}</span>
+    <span className="app-nav-label app-nav-label--short">{short}</span>
+  </>
+)
+
 const AppNav = () => {
   const snap = useSnapshot(state)
   const view = getView(snap)
@@ -68,38 +75,52 @@ const AppNav = () => {
 
   if (!showNav) return null
 
+  const items = [
+    {
+      key: 'back',
+      type: 'outline',
+      full: 'Back',
+      short: 'Back',
+      onClick: () => goBack(view),
+      show: true,
+    },
+    {
+      key: 'marketplace',
+      type: 'outline',
+      full: 'Marketplace',
+      short: 'Shop',
+      onClick: goMarketplace,
+      show: view !== 'marketplace',
+    },
+    {
+      key: 'myDesigns',
+      type: 'outline',
+      full: 'My Designs',
+      short: 'Designs',
+      onClick: goMyDesigns,
+      show: view !== 'myDesigns',
+    },
+    {
+      key: 'create',
+      type: 'filled',
+      full: 'Create Design',
+      short: 'Create',
+      onClick: goCreate,
+      show: view !== 'customizer',
+    },
+  ].filter((item) => item.show)
+
   return (
-    <nav className="app-nav">
-      <CustomButton
-        type="outline"
-        title="Back"
-        handleClick={() => goBack(view)}
-        customStyles="w-fit px-4 py-2 text-sm font-bold"
-      />
-      {view !== 'marketplace' && (
+    <nav className="app-nav" aria-label="Main navigation">
+      {items.map((item) => (
         <CustomButton
-          type="outline"
-          title="Marketplace"
-          handleClick={goMarketplace}
-          customStyles="w-fit px-4 py-2 text-sm font-bold"
+          key={item.key}
+          type={item.type}
+          title={<NavLabel full={item.full} short={item.short} />}
+          handleClick={item.onClick}
+          customStyles="app-nav-btn"
         />
-      )}
-      {view !== 'myDesigns' && (
-        <CustomButton
-          type="outline"
-          title="My Designs"
-          handleClick={goMyDesigns}
-          customStyles="w-fit px-4 py-2 text-sm font-bold"
-        />
-      )}
-      {view !== 'customizer' && (
-        <CustomButton
-          type="filled"
-          title="Create Design"
-          handleClick={goCreate}
-          customStyles="w-fit px-4 py-2 text-sm font-bold"
-        />
-      )}
+      ))}
     </nav>
   )
 }

@@ -134,7 +134,7 @@ const Marketplace = () => {
     const listing = item.design ? item : await getMarketplaceListingById(item.id)
     if (!listing) return
     state.design = migrateOrCreateDesign(listing.design)
-    if (listing.sceneTheme) state.sceneTheme = listing.sceneTheme
+    state.sceneTheme = 'dark'
     syncRootFromDesign(state)
     state.viewerListing = listing
     state.viewerOpen = true
@@ -181,24 +181,24 @@ const Marketplace = () => {
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-2">
+          <div className="marketplace-tabs">
             <CustomButton
               type={activeView === 'shop' ? 'filled' : 'outline'}
               title={`Shop (${listings.length})`}
               handleClick={() => setActiveView('shop')}
-              customStyles="w-fit px-4 py-2 text-xs font-bold"
+              customStyles="marketplace-tab-btn"
             />
             <CustomButton
               type={activeView === 'mine' ? 'filled' : 'outline'}
               title={`My Listings (${myListings.length})`}
               handleClick={() => setActiveView('mine')}
-              customStyles="w-fit px-4 py-2 text-xs font-bold"
+              customStyles="marketplace-tab-btn"
             />
             <CustomButton
               type={activeView === 'purchases' ? 'filled' : 'outline'}
               title={`Purchases (${purchases.length})`}
               handleClick={() => setActiveView('purchases')}
-              customStyles="w-fit px-4 py-2 text-xs font-bold"
+              customStyles="marketplace-tab-btn"
             />
           </div>
 
