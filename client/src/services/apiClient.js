@@ -1,4 +1,8 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '')
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
+
+export const isApiConfigured = () => Boolean(configuredApiUrl)
+
+const API_BASE_URL = (configuredApiUrl || 'http://localhost:5000/api').replace(/\/$/, '')
 const AUTH_TOKEN_KEY = 'wmc_auth_token'
 const AUTH_USER_KEY = 'wmc_auth_user'
 

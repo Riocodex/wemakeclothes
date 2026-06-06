@@ -102,8 +102,10 @@ export const listListings = asyncHandler(async (req, res) => {
     Listing.find({ status: 'active' }).sort({ createdAt: -1 })
   )
 
+  const viewerId = req.user?.id
+
   res.status(200).json({
-    listings: listings.map((listing) => serializeListing(listing, req.user.id)),
+    listings: listings.map((listing) => serializeListing(listing, viewerId)),
   })
 })
 
@@ -121,7 +123,7 @@ export const getListing = asyncHandler(async (req, res) => {
   const listing = await findActiveListing(req.params.id)
 
   res.status(200).json({
-    listing: serializeListing(listing, req.user.id),
+    listing: serializeListing(listing, req.user?.id),
   })
 })
 

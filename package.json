@@ -1,0 +1,11 @@
+{
+  "name": "wemakeclothes",
+  "private": true,
+  "description": "3D clothing customizer and marketplace demo",
+  "scripts": {
+    "dev": "npm run dev --prefix client",
+    "dev:api": "npm run dev --prefix backend",
+    "build": "npm run build --prefix client",
+    "preview": "npm run preview --prefix client"
+  }
+}

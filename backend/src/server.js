@@ -18,7 +18,26 @@ const CLIENT_URLS = (process.env.CLIENT_URL || 'http://localhost:5173,http://127
   .map((url) => url.trim())
   .filter(Boolean)
 
-app.use(cors({ origin: CLIENT_URLS, credentials: true }))
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true
+  if (CLIENT_URLS.includes(origin)) return true
+
+  try {
+    const { hostname } = new URL(origin)
+    return hostname === 'localhost'
+      || hostname.endsWith('.vercel.app')
+      || hostname.endsWith('.onrender.com')
+  } catch {
+    return false
+  }
+}
+
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, isAllowedOrigin(origin))
+  },
+  credentials: true,
+}))
 app.use(express.json({ limit: '10mb' }))
 
 app.get('/', (_req, res) => {

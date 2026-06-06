@@ -1,4 +1,4 @@
-import { apiClient, getAuthToken } from './apiClient'
+import { apiClient, getAuthToken, isApiConfigured } from './apiClient'
 
 const STORAGE_KEY = 'wmc_designs_v1'
 const LISTINGS_KEY = 'wmc_marketplace_listings_v1'
@@ -181,25 +181,37 @@ export const deleteDesignById = async (id) => {
 
 const getPurchasedListingIds = () => new Set(readPurchases().map((item) => item.listingId))
 
-export const listMarketplaceListings = async () => {
-  if (hasBackendSession()) {
-    const response = await apiClient.get('/listings')
-    return response.listings || []
-  }
-
+const listLocalMarketplaceListings = () => {
   const purchasedListingIds = getPurchasedListingIds()
   return [
     ...readListings().map((item) => ({ ...item, isMine: true })),
     ...SAMPLE_LISTINGS
       .filter((item) => !purchasedListingIds.has(item.id))
-      .map((item) => ({ ...item, isMine: false }))
+      .map((item) => ({ ...item, isMine: false })),
   ]
 }
 
+export const listMarketplaceListings = async () => {
+  if (isApiConfigured()) {
+    try {
+      const response = await apiClient.get('/listings')
+      return response.listings || []
+    } catch {
+      if (hasBackendSession()) throw new Error('Could not load marketplace listings')
+    }
+  }
+
+  return listLocalMarketplaceListings()
+}
+
 export const getMarketplaceListingById = async (id) => {
-  if (hasBackendSession()) {
-    const response = await apiClient.get(`/listings/${id}`)
-    return response.listing || null
+  if (isApiConfigured()) {
+    try {
+      const response = await apiClient.get(`/listings/${id}`)
+      return response.listing || null
+    } catch {
+      if (hasBackendSession()) return null
+    }
   }
 
   const listings = await listMarketplaceListings()

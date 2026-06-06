@@ -61,7 +61,8 @@ const Customizer = () => {
     try {
       setGeneratingImg(true);
 
-      const response = await fetch('https://wemakeclothes.onrender.com//api/v1/dalle', {
+      const dalleUrl = (import.meta.env.VITE_DALLE_URL || 'https://wemakeclothes.onrender.com/api/v1/dalle').replace(/\/$/, '')
+      const response = await fetch(dalleUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
