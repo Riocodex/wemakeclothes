@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSnapshot } from 'valtio'
 
 import state from '../store'
 import { CustomButton } from '../components'
+import { AUTH_CHANGE_EVENT, getCurrentStoredUser } from '../services/authService'
 import{
     headContainerAnimation,
     headContentAnimation,
@@ -11,8 +13,14 @@ import{
 } from '../config/motion'
 
 const Home = () => {
-    const snap = useSnapshot(state);
+  const snap = useSnapshot(state)
+  const [user, setUser] = useState(() => getCurrentStoredUser())
 
+  useEffect(() => {
+    const syncUser = () => setUser(getCurrentStoredUser())
+    window.addEventListener(AUTH_CHANGE_EVENT, syncUser)
+    return () => window.removeEventListener(AUTH_CHANGE_EVENT, syncUser)
+  }, [])
 
   return (
    <AnimatePresence>
@@ -42,12 +50,14 @@ const Home = () => {
                         handleClick={()=> { state.myDesignsOpen = false; state.marketplaceOpen = false; state.viewerOpen = false; state.intro = false }}
                         customStyles="w-fit px-4 py-2.5 font-bold text-sm"
                     />
-                    <CustomButton
+                    {user && (
+                      <CustomButton
                         type="outline"
                         title="My Designs"
                         handleClick={() => { state.myDesignsOpen = true; state.marketplaceOpen = false }}
                         customStyles="w-fit px-4 py-2.5 font-bold text-sm"
-                    />
+                      />
+                    )}
                     <CustomButton
                         type="outline"
                         title="Marketplace"

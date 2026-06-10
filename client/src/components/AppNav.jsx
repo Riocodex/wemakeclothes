@@ -6,6 +6,7 @@ import { CustomButton } from './index'
 import {
   AUTH_CHANGE_EVENT,
   getCurrentStoredUser,
+  hasAuthSession,
   logoutUser,
 } from '../services/authService'
 
@@ -45,6 +46,10 @@ const goMarketplace = () => {
 }
 
 const goMyDesigns = () => {
+  if (!hasAuthSession()) {
+    alert('Please log in to view your designs.')
+    return
+  }
   state.intro = true
   state.myDesignsOpen = true
   state.marketplaceOpen = false
@@ -118,7 +123,7 @@ const AppNav = () => {
       full: 'My Designs',
       short: 'Designs',
       onClick: goMyDesigns,
-      show: view !== 'myDesigns',
+      show: user && view !== 'myDesigns',
     },
     {
       key: 'create',

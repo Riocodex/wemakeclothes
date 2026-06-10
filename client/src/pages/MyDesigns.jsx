@@ -11,6 +11,7 @@ import {
   listDesigns,
   listMyListings
 } from '../services/designService'
+import { hasAuthSession } from '../services/authService'
 import { migrateOrCreateDesign, syncRootFromDesign } from '../config/designSchema'
 import { slideAnimation } from '../config/motion'
 
@@ -24,6 +25,10 @@ const MyDesigns = () => {
   const [designsError, setDesignsError] = useState('')
 
   useEffect(() => {
+    if (snap.myDesignsOpen && !hasAuthSession()) {
+      state.myDesignsOpen = false
+      return
+    }
     if (!snap.myDesignsOpen) return
 
     let active = true

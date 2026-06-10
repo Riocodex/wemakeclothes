@@ -9,6 +9,7 @@ import { fadeAnimation, slideAnimation } from '../config/motion';
 import { GARMENT_OPTIONS } from '../config/garments';
 import { applyGarmentChange, syncRootFromDesign } from '../config/designSchema';
 import { saveDesign } from '../services/designService';
+import { hasAuthSession } from '../services/authService';
 import { AIPicker, ColorPicker, CustomButton, FilePicker, Tab } from '../components';
 
 const Customizer = () => {
@@ -161,6 +162,10 @@ const Customizer = () => {
 
   const handleSaveDesign = async () => {
     if (!snap.design || savingDesign) return
+    if (!hasAuthSession()) {
+      alert('Please log in from the home page to save designs.')
+      return
+    }
     const inputName = window.prompt('Enter a name for this design:')
     const trimmedName = (inputName || '').trim()
     if (!trimmedName) {
@@ -178,8 +183,8 @@ const Customizer = () => {
       })
 
       alert(`Design saved successfully. ID: ${saved.id.slice(0, 8)}`)
-    } catch {
-      alert('Could not save design. Please try again.')
+    } catch (error) {
+      alert(error.message || 'Could not save design. Please try again.')
     } finally {
       setSavingDesign(false)
     }
@@ -213,14 +218,16 @@ const Customizer = () => {
             className="absolute z-10 top-5 right-5"
             {...fadeAnimation}
           >
-            <div className="flex items-center gap-2">
-              <CustomButton 
-                type="outline"
-                title={savingDesign ? "Saving..." : "Save Design"}
-                handleClick={handleSaveDesign}
-                customStyles="w-fit px-4 py-2.5 font-bold text-sm"
-              />
-            </div>
+            {hasAuthSession() && (
+              <div className="flex items-center gap-2">
+                <CustomButton
+                  type="outline"
+                  title={savingDesign ? 'Saving...' : 'Save Design'}
+                  handleClick={handleSaveDesign}
+                  customStyles="w-fit px-4 py-2.5 font-bold text-sm"
+                />
+              </div>
+            )}
           </motion.div>
 
           <motion.div

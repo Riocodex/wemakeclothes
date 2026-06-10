@@ -13,6 +13,7 @@ import {
   listMyListings,
   listPurchases
 } from '../services/designService'
+import { hasAuthSession } from '../services/authService'
 import { migrateOrCreateDesign, syncRootFromDesign } from '../config/designSchema'
 import { slideAnimation } from '../config/motion'
 
@@ -89,6 +90,7 @@ const MarketplaceCard = ({ item, onBuy, onView, onUnlist }) => (
 
 const Marketplace = () => {
   const snap = useSnapshot(state)
+  const isLoggedIn = hasAuthSession()
   const [activeView, setActiveView] = useState('shop')
   const [refreshKey, setRefreshKey] = useState(0)
   const [listings, setListings] = useState([])
@@ -97,7 +99,9 @@ const Marketplace = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const visibleListings = activeView === 'mine' ? listings.filter((item) => item.isMine) : listings
+  const visibleListings = activeView === 'mine'
+    ? myListings.map((item) => ({ ...item, isMine: true }))
+    : listings
 
   useEffect(() => {
     if (!snap.marketplaceOpen) return
@@ -128,7 +132,13 @@ const Marketplace = () => {
     return () => {
       active = false
     }
-  }, [snap.marketplaceOpen, refreshKey])
+  }, [snap.marketplaceOpen, refreshKey, isLoggedIn])
+
+  useEffect(() => {
+    if (!isLoggedIn && activeView !== 'shop') {
+      setActiveView('shop')
+    }
+  }, [isLoggedIn, activeView])
 
   const handleViewListing = async (item) => {
     const listing = item.design ? item : await getMarketplaceListingById(item.id)
@@ -144,6 +154,10 @@ const Marketplace = () => {
   }
 
   const handleBuy = async (item) => {
+    if (!hasAuthSession()) {
+      alert('Please log in from the home page to purchase designs.')
+      return
+    }
     const ok = window.confirm(`Buy "${item.title}" for ${formatPrice(item.price)}?`)
     if (!ok) return
     try {
@@ -188,18 +202,22 @@ const Marketplace = () => {
               handleClick={() => setActiveView('shop')}
               customStyles="marketplace-tab-btn"
             />
-            <CustomButton
-              type={activeView === 'mine' ? 'filled' : 'outline'}
-              title={`My Listings (${myListings.length})`}
-              handleClick={() => setActiveView('mine')}
-              customStyles="marketplace-tab-btn"
-            />
-            <CustomButton
-              type={activeView === 'purchases' ? 'filled' : 'outline'}
-              title={`Purchases (${purchases.length})`}
-              handleClick={() => setActiveView('purchases')}
-              customStyles="marketplace-tab-btn"
-            />
+            {isLoggedIn && (
+              <>
+                <CustomButton
+                  type={activeView === 'mine' ? 'filled' : 'outline'}
+                  title={`My Listings (${myListings.length})`}
+                  handleClick={() => setActiveView('mine')}
+                  customStyles="marketplace-tab-btn"
+                />
+                <CustomButton
+                  type={activeView === 'purchases' ? 'filled' : 'outline'}
+                  title={`Purchases (${purchases.length})`}
+                  handleClick={() => setActiveView('purchases')}
+                  customStyles="marketplace-tab-btn"
+                />
+              </>
+            )}
           </div>
 
           <div className="app-page-scroll w-[min(92vw,1080px)] max-h-[68vh] overflow-auto pr-1">
@@ -217,7 +235,9 @@ const Marketplace = () => {
 
             {!loading && !error && activeView !== 'purchases' && visibleListings.length === 0 && (
               <div className="glassmorphism rounded-xl p-6 text-sm text-gray-700">
-                No listings yet. Open My Designs and list one of your saved designs.
+                {activeView === 'mine'
+                  ? 'You have not listed any designs yet. Save a design in My Designs, then list it for sale.'
+                  : 'No listings yet. Log in and list a design from My Designs.'}
               </div>
             )}
 

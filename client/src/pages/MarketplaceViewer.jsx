@@ -4,6 +4,7 @@ import { useSnapshot } from 'valtio'
 import state from '../store'
 import { CustomButton } from '../components'
 import { buyMarketplaceListing } from '../services/designService'
+import { hasAuthSession } from '../services/authService'
 import { fadeAnimation } from '../config/motion'
 
 const formatPrice = (value) => `$${Number(value || 0).toFixed(0)}`
@@ -34,6 +35,10 @@ const MarketplaceViewer = () => {
 
   const handleBuy = async () => {
     if (!listing || listing.isMine) return
+    if (!hasAuthSession()) {
+      alert('Please log in from the home page to purchase designs.')
+      return
+    }
     const ok = window.confirm(`Buy "${listing.title}" for ${formatPrice(listing.price)}?`)
     if (!ok) return
     try {
