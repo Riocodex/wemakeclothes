@@ -41,9 +41,10 @@ const ClassicShirt = ({ snap, garmentConfig, nodes }) => {
   const fullCfg = { ...defaultFullDecal, ...garmentConfig.decal?.full }
 
   const stateKey = JSON.stringify({
+    sessionKey: snap.sessionKey,
     catalogId: snap.design?.catalogId,
-    logo: snap.logoDecal,
-    full: snap.fullDecal,
+    logo: snap.design?.textures?.logo ?? snap.logoDecal,
+    full: snap.design?.textures?.full ?? snap.fullDecal,
     logoOn: snap.isLogoTexture,
     fullOn: snap.isFullTexture,
   })

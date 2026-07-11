@@ -1,8 +1,47 @@
 import { GARMENT_CATALOG } from './garments'
 
-const DEFAULT_TEXTURE_LOGO = './me.jpg'
-const DEFAULT_TEXTURE_FULL = './me.jpg'
+export const DEFAULT_TEXTURE_LOGO = './me.jpg'
+export const DEFAULT_TEXTURE_FULL = './me.jpg'
 const DEFAULT_BODY = '#EFBD48'
+
+export function isDefaultTexture (src) {
+  if (!src || typeof src !== 'string') return true
+  return (
+    src === DEFAULT_TEXTURE_LOGO ||
+    src === DEFAULT_TEXTURE_FULL ||
+    src.endsWith('/me.jpg') ||
+    src.endsWith('me.jpg')
+  )
+}
+
+/**
+ * When full texture is still the placeholder, reuse a custom logo upload.
+ * @returns {boolean} whether full texture was updated
+ */
+export function copyLogoToFullIfNeeded (state) {
+  if (!state.design) return false
+
+  const logoSrc = state.design.textures?.logo || state.logoDecal
+  const fullSrc = state.design.textures?.full || state.fullDecal
+
+  if (isDefaultTexture(logoSrc) || !isDefaultTexture(fullSrc)) return false
+
+  state.design.textures.full = logoSrc
+  state.fullDecal = logoSrc
+
+  const layerId = 'full-layer'
+  const existingLayerIndex = state.design.layers.findIndex((layer) => layer.id === layerId)
+  const layerPayload = {
+    id: layerId,
+    type: 'image',
+    placement: 'full',
+    src: logoSrc,
+  }
+  if (existingLayerIndex >= 0) state.design.layers[existingLayerIndex] = layerPayload
+  else state.design.layers.push(layerPayload)
+
+  return true
+}
 
 /**
  * Per-catalog metadata for marketplace / UI (SSOT: catalogId in design).

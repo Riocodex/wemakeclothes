@@ -7,7 +7,7 @@ import { captureCanvasPreview, reader } from '../config/helpers';
 import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants';
 import { fadeAnimation, slideAnimation } from '../config/motion';
 import { GARMENT_OPTIONS } from '../config/garments';
-import { applyGarmentChange, syncRootFromDesign } from '../config/designSchema';
+import { applyGarmentChange, copyLogoToFullIfNeeded, syncRootFromDesign } from '../config/designSchema';
 import { saveDesign } from '../services/designService';
 import { hasAuthSession } from '../services/authService';
 import { AIPicker, ColorPicker, CustomButton, FilePicker, Tab } from '../components';
@@ -89,8 +89,8 @@ const Customizer = () => {
 
     state[decalType.stateProperty] = result;
     if (state.design) {
-      if (type === 'logo') state.design.textures = { ...state.design.textures, logo: result }
-      if (type === 'full') state.design.textures = { ...state.design.textures, full: result }
+      if (type === 'logo') state.design.textures.logo = result
+      if (type === 'full') state.design.textures.full = result
       const layerId = `${type}-layer`
       const existingLayerIndex = state.design.layers.findIndex((layer) => layer.id === layerId)
       const layerPayload = {
@@ -104,7 +104,23 @@ const Customizer = () => {
     }
     syncRootFromDesign(state);
 
-    if(!activeFilterTab[decalType.filterTab]) {
+    if (type === 'full') {
+      setActiveFilterTab({ logoShirt: false, stylishShirt: true })
+      state.isLogoTexture = false
+      state.isFullTexture = true
+      if (state.design) {
+        state.design.isLogoTexture = false
+        state.design.isFullTexture = true
+      }
+    } else if (type === 'logo') {
+      setActiveFilterTab({ logoShirt: true, stylishShirt: false })
+      state.isLogoTexture = true
+      state.isFullTexture = false
+      if (state.design) {
+        state.design.isLogoTexture = true
+        state.design.isFullTexture = false
+      }
+    } else if (!activeFilterTab[decalType.filterTab]) {
       handleActiveFilterTab(decalType.filterTab)
     }
   }
@@ -115,10 +131,13 @@ const Customizer = () => {
           state.isLogoTexture = !activeFilterTab[tabName];
         if (state.design) state.design.isLogoTexture = state.isLogoTexture
         break;
-      case "stylishShirt":
-        state.isFullTexture = !activeFilterTab[tabName];
+      case "stylishShirt": {
+        const turningOn = !activeFilterTab[tabName];
+        state.isFullTexture = turningOn;
         if (state.design) state.design.isFullTexture = state.isFullTexture
+        if (turningOn) copyLogoToFullIfNeeded(state)
         break;
+      }
       default:
         state.isLogoTexture = true;
         state.isFullTexture = false;
@@ -140,11 +159,31 @@ const Customizer = () => {
   }
 
   const readFile = (type) => {
+    const applyResult = (result) => {
+      handleDecals(type, result)
+      setActiveEditorTab('')
+    }
+
+    if (!file) {
+      if (type === 'full' && copyLogoToFullIfNeeded(state)) {
+        syncRootFromDesign(state)
+        setActiveFilterTab({ logoShirt: false, stylishShirt: true })
+        state.isLogoTexture = false
+        state.isFullTexture = true
+        if (state.design) {
+          state.design.isLogoTexture = false
+          state.design.isFullTexture = true
+        }
+        setActiveEditorTab('')
+        return
+      }
+      alert('Please upload an image first.')
+      return
+    }
+
     reader(file)
-      .then((result) => {
-        handleDecals(type, result);
-        setActiveEditorTab("");
-      })
+      .then(applyResult)
+      .catch(() => alert('Could not read image. Please try uploading again.'))
   }
 
   const handleThemeChange = (themeName) => {

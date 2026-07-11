@@ -5,6 +5,7 @@ import {
   getStoredUser,
   setAuthSession,
 } from './apiClient'
+import { resetSessionToDefault } from '../store'
 
 export const AUTH_CHANGE_EVENT = 'wmc-auth-change'
 
@@ -15,6 +16,7 @@ const notifyAuthChange = () => {
 const storeAuthResponse = (response) => {
   if (response?.token && response?.user) {
     setAuthSession(response)
+    resetSessionToDefault()
     notifyAuthChange()
   }
 
@@ -44,6 +46,7 @@ export const fetchCurrentUser = async () => {
 
 export const logoutUser = () => {
   clearAuthSession()
+  resetSessionToDefault()
   notifyAuthChange()
 }
 
