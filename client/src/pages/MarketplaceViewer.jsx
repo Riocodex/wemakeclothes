@@ -2,11 +2,17 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useSnapshot } from 'valtio'
 
 import state from '../store'
-import { CustomButton } from '../components'
 import { buyMarketplaceListing } from '../services/designService'
 import { fadeAnimation } from '../config/motion'
-
-const formatPrice = (value) => `$${Number(value || 0).toFixed(0)}`
+import {
+  formatPrice,
+  getGarmentLabel,
+  getListingStatus,
+  getSellerName,
+} from '../config/format'
+import { requestSignIn } from '../config/navigation'
+import { StatusBadge, useAuthSession } from '../components/MarketplaceUI'
+import { ArrowLeftIcon, BagIcon, LockIcon } from '../components/Icons'
 
 const themeButtons = [
   { name: 'light', label: 'Light' },
@@ -15,9 +21,9 @@ const themeButtons = [
 
 const MarketplaceViewer = () => {
   const snap = useSnapshot(state)
+  const { signedIn } = useAuthSession()
   const listing = snap.viewerListing
   const isLightScene = snap.sceneTheme === 'light'
-  const panelTheme = isLightScene ? 'light' : 'dark'
 
   const handleThemeChange = (themeName) => {
     state.sceneTheme = themeName
@@ -34,7 +40,11 @@ const MarketplaceViewer = () => {
 
   const handleBuy = async () => {
     if (!listing || listing.isMine) return
-    const ok = window.confirm(`Buy "${listing.title}" for ${formatPrice(listing.price)}?`)
+    if (!signedIn) {
+      requestSignIn(`Sign in to buy "${listing.title}".`)
+      return
+    }
+    const ok = window.confirm(`Buy "${listing.title}" for ${formatPrice(listing.price, listing.currency)}?`)
     if (!ok) return
     try {
       const result = await buyMarketplaceListing(listing.id)
@@ -49,52 +59,81 @@ const MarketplaceViewer = () => {
     }
   }
 
+  const status = listing ? getListingStatus(listing) : 'active'
+  const purchasable = status === 'active'
+
   return (
     <AnimatePresence>
       {snap.viewerOpen && listing && (
         <div className="product-viewer" aria-live="polite">
-          <motion.div
-            className="product-viewer-toolbar"
-            {...fadeAnimation}
-          >
-            <div className={`product-viewer-chip product-viewer-chip--${panelTheme}`}>
+          <motion.div className="product-viewer-toolbar" {...fadeAnimation}>
+            <div
+              className={`theme-toggle ${isLightScene ? '' : 'theme-toggle--dark'}`}
+              role="group"
+              aria-label="Scene theme"
+            >
               {themeButtons.map((theme) => (
                 <button
                   key={theme.name}
                   type="button"
-                  className={`product-viewer-theme-btn ${
-                    snap.sceneTheme === theme.name
-                      ? 'product-viewer-theme-btn--active'
-                      : ''
-                  }`}
+                  className="theme-toggle-btn"
+                  aria-pressed={snap.sceneTheme === theme.name}
                   onClick={() => handleThemeChange(theme.name)}
                 >
                   {theme.label}
                 </button>
               ))}
             </div>
-            {!listing.isMine && (
-              <CustomButton
-                type="filled"
-                title="Buy design"
-                handleClick={handleBuy}
-                customStyles="w-fit min-h-[2.5rem] px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold shrink-0"
-              />
-            )}
           </motion.div>
 
-          <motion.div
-            className={`product-viewer-details product-viewer-details--${panelTheme}`}
-            {...fadeAnimation}
-          >
-            <p className="product-viewer-eyebrow">Marketplace preview</p>
-            <h2 className="product-viewer-title">{listing.title}</h2>
-            <p className="product-viewer-meta">by {listing.sellerName}</p>
+          <motion.aside className="product-viewer-details" {...fadeAnimation}>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="badge badge-neutral">{getGarmentLabel(listing.design)}</span>
+              <StatusBadge item={listing} />
+              {listing.isMine && <span className="badge badge-brand">Your listing</span>}
+            </div>
+
+            <h2 className="mt-3 text-xl font-bold leading-tight tracking-tight text-ink-900 sm:text-2xl">
+              {listing.title}
+            </h2>
+            <p className="mt-1 text-sm text-ink-500">by {getSellerName(listing)}</p>
+
+            <p className="mt-4 text-2xl font-bold tracking-tight text-ink-900">
+              {formatPrice(listing.price, listing.currency)}
+            </p>
+
             {listing.description ? (
-              <p className="product-viewer-description">{listing.description}</p>
+              <p className="mt-3 text-sm leading-relaxed text-ink-600">{listing.description}</p>
             ) : null}
-            <p className="product-viewer-price">{formatPrice(listing.price)}</p>
-          </motion.div>
+
+            <div className="mt-5 flex flex-col gap-2">
+              {!listing.isMine && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-lg btn-block"
+                  onClick={handleBuy}
+                  disabled={!purchasable}
+                >
+                  {purchasable && !signedIn ? <LockIcon /> : <BagIcon />}
+                  {!purchasable
+                    ? status === 'sold' ? 'Sold' : 'Unavailable'
+                    : signedIn ? 'Buy design' : 'Sign in to buy'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-ghost btn-block"
+                onClick={handleBack}
+              >
+                <ArrowLeftIcon />
+                Back to marketplace
+              </button>
+            </div>
+
+            <p className="mt-4 hidden border-t border-ink-200/70 pt-4 text-xs leading-relaxed text-ink-500 sm:block">
+              A purchase copies this design into My Designs so you can keep customizing it.
+            </p>
+          </motion.aside>
         </div>
       )}
     </AnimatePresence>

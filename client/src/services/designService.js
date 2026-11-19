@@ -1,9 +1,7 @@
-import { apiClient, getAuthToken } from './apiClient'
+import { ApiError, apiClient, getAuthToken } from './apiClient'
 
 const STORAGE_KEY = 'wmc_designs_v1'
 const LISTINGS_KEY = 'wmc_marketplace_listings_v1'
-const PURCHASES_KEY = 'wmc_marketplace_purchases_v1'
-
 const samplePreview = (label, color, accent) => {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420">
@@ -101,21 +99,6 @@ const writeListings = (items) => {
   localStorage.setItem(LISTINGS_KEY, JSON.stringify(items))
 }
 
-const readPurchases = () => {
-  try {
-    const raw = localStorage.getItem(PURCHASES_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
-}
-
-const writePurchases = (items) => {
-  localStorage.setItem(PURCHASES_KEY, JSON.stringify(items))
-}
-
 const hasBackendSession = () => Boolean(getAuthToken())
 
 const saveDesignLocally = ({ title, design, previewImage, sceneTheme }) => {
@@ -179,20 +162,15 @@ export const deleteDesignById = async (id) => {
   return next.length !== existing.length
 }
 
-const getPurchasedListingIds = () => new Set(readPurchases().map((item) => item.listingId))
-
 export const listMarketplaceListings = async () => {
   if (hasBackendSession()) {
     const response = await apiClient.get('/listings')
     return response.listings || []
   }
 
-  const purchasedListingIds = getPurchasedListingIds()
   return [
     ...readListings().map((item) => ({ ...item, isMine: true })),
-    ...SAMPLE_LISTINGS
-      .filter((item) => !purchasedListingIds.has(item.id))
-      .map((item) => ({ ...item, isMine: false }))
+    ...SAMPLE_LISTINGS.map((item) => ({ ...item, isMine: false }))
   ]
 }
 
@@ -221,7 +199,7 @@ export const listPurchases = async () => {
     return response.purchases || []
   }
 
-  return readPurchases()
+  return []
 }
 
 export const getListingBySourceDesignId = async (sourceDesignId) => {
@@ -277,30 +255,9 @@ export const deleteListingById = async (id) => {
 }
 
 export const buyMarketplaceListing = async (listingId) => {
-  if (hasBackendSession()) {
-    return apiClient.post(`/listings/${listingId}/purchase`)
+  if (!hasBackendSession()) {
+    throw new ApiError('Sign in to buy this design.', 401, { code: 'AUTH_REQUIRED' })
   }
 
-  if (getPurchasedListingIds().has(listingId)) return null
-  const listings = await listMarketplaceListings()
-  const listing = listings.find((item) => item.id === listingId)
-  if (!listing || listing.isMine) return null
-  const purchasedAt = new Date().toISOString()
-  const purchaseRecord = {
-    id: crypto.randomUUID(),
-    listingId: listing.id,
-    title: listing.title,
-    sellerName: listing.sellerName,
-    price: listing.price,
-    purchasedAt,
-  }
-  const saved = await saveDesign({
-    title: `${listing.title} purchase`,
-    design: JSON.parse(JSON.stringify(listing.design)),
-    previewImage: listing.previewImage,
-    sceneTheme: listing.sceneTheme,
-  })
-
-  writePurchases([purchaseRecord, ...readPurchases()])
-  return { purchase: purchaseRecord, savedDesign: saved }
+  return apiClient.post(`/listings/${listingId}/purchase`)
 }

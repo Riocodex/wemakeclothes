@@ -1,9 +1,9 @@
 import React from 'react'
-import CustomButton from './CustomButton'
 
 const AIPicker = ({prompt, setPrompt, generatingImg,handleSubmit}) => {
   return (
     <div className='aipicker-container'>
+      <p className="eyebrow text-ink-500">AI artwork</p>
       <textarea
         placeholder='Ask Ai...'
         rows={5}
@@ -11,33 +11,31 @@ const AIPicker = ({prompt, setPrompt, generatingImg,handleSubmit}) => {
         onChange={(e)=>setPrompt(e.target.value)}
         className='aipicker-textarea'
       />
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {generatingImg ? (
-          <CustomButton
-            type="outline"
-            title="Asking AI"
-            customStyles="text-xs"
-          />
+          <button type="button" className="btn btn-secondary btn-sm col-span-2" disabled>
+            Asking AI
+          </button>
         ):(
           <>
-            <CustomButton
-              type="outline"
-              title="AI logo"
-              handleClick={()=>handleSubmit('logo')}
-              customStyles="text-xs"
-            />
-             <CustomButton
-              type="filled"
-              title="AI Full"
-              handleClick={()=>handleSubmit('full')}
-              customStyles="text-xs"
-            />
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={()=>handleSubmit('logo')}
+            >
+              AI logo
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={()=>handleSubmit('full')}
+            >
+              AI Full
+            </button>
           </>
         )}
       </div>
     </div>
-
-    
   )
 }
 

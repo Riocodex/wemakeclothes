@@ -5,11 +5,12 @@ import { useSnapshot } from 'valtio';
 import state from '../store';
 import { captureCanvasPreview, reader } from '../config/helpers';
 import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants';
-import { fadeAnimation, slideAnimation } from '../config/motion';
+import { slideAnimation } from '../config/motion';
 import { GARMENT_OPTIONS } from '../config/garments';
 import { applyGarmentChange, syncRootFromDesign } from '../config/designSchema';
 import { saveDesign } from '../services/designService';
-import { AIPicker, ColorPicker, CustomButton, FilePicker, Tab } from '../components';
+import { AIPicker, ColorPicker, FilePicker, Tab } from '../components';
+import { CloseIcon, SaveIcon } from '../components/Icons';
 
 const Customizer = () => {
   const snap = useSnapshot(state);
@@ -183,134 +184,165 @@ const Customizer = () => {
       setSavingDesign(false)
     }
   }
+  const garmentLabel = GARMENT_OPTIONS.find((item) => item.name === selectedGarment)?.label || 'Select'
+  const garmentPreview = GARMENT_OPTIONS.find((item) => item.name === selectedGarment)?.preview
 
   return (
+    <>
     <AnimatePresence>
       {!snap.intro && !snap.viewerOpen && (
         <>
           <motion.div
             key="custom"
-            className="absolute top-0 left-0 z-10"
+            className="customizer-rail"
             {...slideAnimation('left')}
           >
-            <div className="flex items-center min-h-screen">
-              <div className="editortabs-container tabs">
-                {EditorTabs.map((tab) => (
-                  <Tab 
-                    key={tab.name}
-                    tab={tab}
-                    handleClick={() => setActiveEditorTab(tab.name)}
-                  />
-                ))}
-
-                {generateTabContent()}
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="absolute z-10 top-5 right-5"
-            {...fadeAnimation}
-          >
-            <div className="flex items-center gap-2">
-              <CustomButton 
-                type="outline"
-                title={savingDesign ? "Saving..." : "Save Design"}
-                handleClick={handleSaveDesign}
-                customStyles="w-fit px-4 py-2.5 font-bold text-sm"
-              />
-            </div>
-          </motion.div>
-
-          <motion.div
-            className='filtertabs-container'
-            {...slideAnimation("up")}
-          >
-            <div className="glassmorphism rounded-lg px-3 py-2 flex items-center gap-2">
-              <CustomButton
-                type="outline"
-                title={`Style: ${GARMENT_OPTIONS.find((item) => item.name === selectedGarment)?.label || 'Select'}`}
-                handleClick={() => setIsGarmentPickerOpen(true)}
-                customStyles="w-fit px-3 py-1.5 text-xs font-semibold"
-              />
-              {themeButtons.map((theme) => (
-                <CustomButton
-                  key={theme.name}
-                  type={snap.sceneTheme === theme.name ? "filled" : "outline"}
-                  title={theme.label}
-                  handleClick={() => handleThemeChange(theme.name)}
-                  customStyles="w-fit px-3 py-1.5 text-xs font-semibold"
+            <div className="editortabs-container tabs">
+              <span className="editortabs-label">Tools</span>
+              {EditorTabs.map((tab) => (
+                <Tab 
+                  key={tab.name}
+                  tab={tab}
+                  isActiveTab={activeEditorTab === tab.name}
+                  handleClick={() => setActiveEditorTab((current) => (current === tab.name ? "" : tab.name))}
                 />
               ))}
+
+              {generateTabContent()}
             </div>
-            {FilterTabs.map((tab) => (
-              <Tab
-                key={tab.name}
-                tab={tab}
-                isFilterTab
-                isActiveTab={activeFilterTab[tab.name]}
-                handleClick={() => handleActiveFilterTab(tab.name)}
-              />
-            ))}
           </motion.div>
 
-          <AnimatePresence>
-            {isGarmentPickerOpen && (
-              <motion.div
-                className="absolute inset-0 z-20 flex items-center justify-center bg-black/30 backdrop-blur-[2px]"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsGarmentPickerOpen(false)}
+          <motion.div
+            className='customizer-dock'
+            {...slideAnimation("up")}
+          >
+            <div className="customizer-dock-inner">
+              <button
+                type="button"
+                className="dock-btn dock-garment"
+                onClick={() => setIsGarmentPickerOpen(true)}
+                aria-haspopup="dialog"
               >
-                <motion.div
-                  className="glassmorphism rounded-xl p-4 w-[min(92vw,620px)]"
-                  initial={{ opacity: 0, scale: 0.92, y: 16 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 8 }}
-                  transition={{ type: "spring", stiffness: 280, damping: 24 }}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-800">Choose Garment Style</h3>
-                    <CustomButton
-                      type="outline"
-                      title="Close"
-                      handleClick={() => setIsGarmentPickerOpen(false)}
-                      customStyles="w-fit px-3 py-1 text-xs"
-                    />
-                  </div>
+                <span className="dock-swatch" style={{ backgroundColor: snap.color }} aria-hidden="true" />
+                <span className="text-ink-500 font-medium hidden sm:inline">Style</span>
+                <span className="truncate">{garmentPreview} {garmentLabel}</span>
+              </button>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {GARMENT_OPTIONS.map((item) => {
-                      const isActive = selectedGarment === item.name
-                      return (
-                        <button
-                          key={item.name}
-                          type="button"
-                          className="glassmorphism rounded-lg p-3 text-left transition-all hover:scale-[1.02]"
-                          onClick={() => handleGarmentChange(item.name)}
-                          style={{
-                            borderColor: isActive ? snap.color : "rgba(255,255,255,0.18)",
-                            borderWidth: isActive ? "2px" : "1px",
-                          }}
-                        >
-                          <div className="text-2xl mb-1">{item.preview}</div>
-                          <div className="text-sm font-semibold text-gray-900">{item.label}</div>
-                          <div className="text-[11px] text-gray-600">
-                            Tap to apply this style
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              <span className="dock-divider" aria-hidden="true" />
+
+              <div className="theme-toggle dock-theme" role="group" aria-label="Scene theme">
+                {themeButtons.map((theme) => (
+                  <button
+                    key={theme.name}
+                    type="button"
+                    className="theme-toggle-btn"
+                    aria-pressed={snap.sceneTheme === theme.name}
+                    onClick={() => handleThemeChange(theme.name)}
+                  >
+                    {theme.label}
+                  </button>
+                ))}
+              </div>
+
+              <span className="dock-divider" aria-hidden="true" />
+
+              <div className="filter-group dock-filters" role="group" aria-label="Texture placement">
+                {FilterTabs.map((tab) => (
+                  <Tab
+                    key={tab.name}
+                    tab={tab}
+                    isFilterTab
+                    isActiveTab={activeFilterTab[tab.name]}
+                    handleClick={() => handleActiveFilterTab(tab.name)}
+                  />
+                ))}
+              </div>
+
+              <span className="dock-divider" aria-hidden="true" />
+
+              <button
+                type="button"
+                className="btn btn-primary dock-save"
+                onClick={handleSaveDesign}
+                disabled={savingDesign}
+                style={{ minHeight: '2.75rem' }}
+              >
+                <SaveIcon />
+                {savingDesign ? "Saving..." : "Save Design"}
+              </button>
+            </div>
+          </motion.div>
         </>
       )}
     </AnimatePresence>
+
+    <AnimatePresence>
+      {!snap.intro && !snap.viewerOpen && isGarmentPickerOpen && (
+        <motion.div
+          className="modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setIsGarmentPickerOpen(false)}
+        >
+          <motion.div
+            className="modal-panel sm:max-w-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="garment-picker-title"
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            transition={{ type: "spring", stiffness: 280, damping: 24 }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="eyebrow text-ink-500">Garment</p>
+                <h3 id="garment-picker-title" className="mt-1 text-lg font-bold tracking-tight">Choose Garment Style</h3>
+                <p className="mt-0.5 text-xs text-ink-500">Your colors and artwork carry over.</p>
+              </div>
+              <button
+                type="button"
+                className="icon-btn text-ink-500 hover:bg-ink-100 hover:text-ink-900"
+                onClick={() => setIsGarmentPickerOpen(false)}
+                aria-label="Close"
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {GARMENT_OPTIONS.map((item) => {
+                const isActive = selectedGarment === item.name
+                return (
+                  <button
+                    key={item.name}
+                    type="button"
+                    aria-pressed={isActive}
+                    className={`group flex flex-col items-start rounded-2xl border p-3 text-left transition-all ${
+                      isActive
+                        ? 'border-ink-900 bg-ink-900 text-white'
+                        : 'border-ink-200 bg-white hover:border-ink-400 hover:shadow-card'
+                    }`}
+                    onClick={() => handleGarmentChange(item.name)}
+                  >
+                    <span className={`flex h-12 w-full items-center justify-center rounded-xl text-2xl ${isActive ? 'bg-white/10' : 'bg-ink-50'}`}>
+                      {item.preview}
+                    </span>
+                    <span className="mt-2.5 text-sm font-semibold">{item.label}</span>
+                    <span className={`text-[0.6875rem] ${isActive ? 'text-white/60' : 'text-ink-500'}`}>
+                      {isActive ? 'Current style' : 'Tap to apply this style'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   )
 }
 

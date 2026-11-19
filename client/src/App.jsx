@@ -7,7 +7,6 @@ import Home from './pages/Home'
 import MyDesigns from './pages/MyDesigns'
 import Marketplace from './pages/Marketplace'
 import MarketplaceViewer from './pages/MarketplaceViewer'
-import AuthPanel from './components/AuthPanel'
 import AppNav from './components/AppNav'
 import state from './store'
 
@@ -44,7 +43,6 @@ function App() {
     <main className={appClass}>
 
       <CanvasStage/>
-      <AuthPanel/>
       <AppNav/>
       <Home/>
       <MyDesigns/>
