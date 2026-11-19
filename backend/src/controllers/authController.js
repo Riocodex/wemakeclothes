@@ -1,10 +1,36 @@
-import { User } from '../models/index.js'
+import { createAnonClient, createServiceClient } from '../config/supabase.js'
+import { mapProfile, toAuthUser } from '../db/map.js'
 import { HttpError, asyncHandler } from '../utils/httpError.js'
-import { signToken } from '../utils/tokens.js'
+import { serializeUser } from '../utils/serializers.js'
 
-const serializeAuth = (user) => ({
-  user: user.toJSON(),
-  token: signToken(user),
+const PROFILE_COLUMNS = 'id, name, email, avatar_url, role, created_at, updated_at'
+
+const isExistingUserError = (error) => {
+  const message = (error?.message || '').toLowerCase()
+  return error?.status === 422
+    || error?.code === 'email_exists'
+    || message.includes('already registered')
+    || message.includes('already been registered')
+    || message.includes('user already exists')
+}
+
+const loadProfile = async (userId) => {
+  const { data, error } = await createServiceClient()
+    .from('profiles')
+    .select(PROFILE_COLUMNS)
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
+const serializeAuth = (profile, token) => ({
+  user: serializeUser(toAuthUser(mapProfile(profile))),
+  token,
 })
 
 export const register = asyncHandler(async (req, res) => {
@@ -18,18 +44,48 @@ export const register = asyncHandler(async (req, res) => {
     throw new HttpError(400, 'Password must be at least 8 characters')
   }
 
-  const existing = await User.findOne({ email: email.trim().toLowerCase() })
-  if (existing) {
-    throw new HttpError(409, 'An account with this email already exists')
-  }
+  const normalizedEmail = email.trim().toLowerCase()
+  const trimmedName = name.trim()
+  const service = createServiceClient()
 
-  const user = await User.create({
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    passwordHash: password,
+  const { data: created, error: createError } = await service.auth.admin.createUser({
+    email: normalizedEmail,
+    password,
+    email_confirm: true,
+    user_metadata: { name: trimmedName },
   })
 
-  res.status(201).json(serializeAuth(user))
+  if (createError) {
+    if (isExistingUserError(createError)) {
+      throw new HttpError(409, 'An account with this email already exists')
+    }
+    throw createError
+  }
+
+  const { error: profileError } = await service
+    .from('profiles')
+    .update({ name: trimmedName, email: normalizedEmail })
+    .eq('id', created.user.id)
+
+  if (profileError) {
+    throw profileError
+  }
+
+  const { data: sessionData, error: sessionError } = await createAnonClient().auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  })
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new HttpError(401, 'Invalid email or password')
+  }
+
+  const profile = await loadProfile(created.user.id)
+  if (!profile) {
+    throw new HttpError(401, 'User no longer exists')
+  }
+
+  res.status(201).json(serializeAuth(profile, sessionData.session.access_token))
 })
 
 export const login = asyncHandler(async (req, res) => {
@@ -39,16 +95,25 @@ export const login = asyncHandler(async (req, res) => {
     throw new HttpError(400, 'Email and password are required')
   }
 
-  const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+passwordHash')
-  if (!user || !(await user.comparePassword(password))) {
+  const { data, error } = await createAnonClient().auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password,
+  })
+
+  if (error || !data?.session?.access_token || !data?.user) {
     throw new HttpError(401, 'Invalid email or password')
   }
 
-  res.status(200).json(serializeAuth(user))
+  const profile = await loadProfile(data.user.id)
+  if (!profile) {
+    throw new HttpError(401, 'User no longer exists')
+  }
+
+  res.status(200).json(serializeAuth(profile, data.session.access_token))
 })
 
 export const me = asyncHandler(async (req, res) => {
   res.status(200).json({
-    user: req.user.toJSON(),
+    user: serializeUser(req.user),
   })
 })

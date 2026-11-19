@@ -1,124 +1,188 @@
-import mongoose from 'mongoose'
-
-import { Design, Listing, Purchase } from '../models/index.js'
+import { mapDesign, mapListing, mapPurchase } from '../db/map.js'
+import { isUuid } from '../utils/ids.js'
 import { HttpError, asyncHandler } from '../utils/httpError.js'
 import { serializeDesign, serializeListing, serializePurchase } from '../utils/serializers.js'
+import { throwIfSupabaseError } from '../utils/supabaseErrors.js'
 
-const assertObjectId = (id, message) => {
-  if (!mongoose.isValidObjectId(id)) {
+const LISTING_SELECT = `
+  id, seller_id, design_id, title, description, price, currency, status,
+  preview_image_url, sold_at, created_at, updated_at,
+  seller:profiles!seller_id (id, name, email, avatar_url, role, created_at, updated_at),
+  design:designs!design_id (
+    id, owner_id, title, description, catalog_id, type, sleeve, colors, textures, layers,
+    is_logo_texture, is_full_texture, scene_theme, preview_image_url, source_design_id,
+    created_at, updated_at
+  )
+`
+
+const PURCHASE_SELECT = `
+  id, buyer_id, seller_id, listing_id, original_design_id, copied_design_id,
+  price, currency, payment_status, created_at, updated_at,
+  seller:profiles!seller_id (id, name, email, avatar_url, role, created_at, updated_at),
+  listing:listings!listing_id (
+    id, seller_id, design_id, title, description, price, currency, status,
+    preview_image_url, sold_at, created_at, updated_at
+  ),
+  copied_design:designs!copied_design_id (
+    id, owner_id, title, description, catalog_id, type, sleeve, colors, textures, layers,
+    is_logo_texture, is_full_texture, scene_theme, preview_image_url, source_design_id,
+    created_at, updated_at
+  )
+`
+
+const DESIGN_COLUMNS = `
+  id, owner_id, title, description, catalog_id, type, sleeve, colors, textures, layers,
+  is_logo_texture, is_full_texture, scene_theme, preview_image_url, source_design_id,
+  created_at, updated_at
+`
+
+const hydrateListing = (row) => mapListing(row)
+
+const assertListingId = (id, message = 'Listing not found') => {
+  if (!isUuid(id)) {
     throw new HttpError(404, message)
   }
 }
 
-const populateListing = (query) => query
-  .populate('sellerId', 'name email')
-  .populate('designId')
+const findActiveListing = async (supabase, id) => {
+  assertListingId(id)
 
-const findActiveListing = async (id) => {
-  assertObjectId(id, 'Listing not found')
+  const { data, error } = await supabase
+    .from('listings')
+    .select(LISTING_SELECT)
+    .eq('id', id)
+    .eq('status', 'active')
+    .maybeSingle()
 
-  const listing = await populateListing(Listing.findOne({
-    _id: id,
-    status: 'active',
-  }))
+  throwIfSupabaseError(error, 'Listing not found')
 
-  if (!listing) {
+  if (!data) {
     throw new HttpError(404, 'Listing not found')
   }
 
-  return listing
+  return hydrateListing(data)
 }
-
-const copyDesignForBuyer = (sourceDesign, buyerId, listingTitle) => ({
-  ownerId: buyerId,
-  title: `${listingTitle} purchase`,
-  description: sourceDesign.description,
-  catalogId: sourceDesign.catalogId,
-  type: sourceDesign.type,
-  sleeve: sourceDesign.sleeve,
-  colors: sourceDesign.colors,
-  textures: sourceDesign.textures,
-  layers: sourceDesign.layers,
-  isLogoTexture: sourceDesign.isLogoTexture,
-  isFullTexture: sourceDesign.isFullTexture,
-  sceneTheme: sourceDesign.sceneTheme,
-  previewImageUrl: sourceDesign.previewImageUrl,
-  sourceDesignId: sourceDesign._id,
-})
 
 export const createListing = asyncHandler(async (req, res) => {
   const { designId, price, description, currency } = req.body
 
-  assertObjectId(designId, 'Design not found')
+  if (!isUuid(designId)) {
+    throw new HttpError(404, 'Design not found')
+  }
 
   const parsedPrice = Number(price)
   if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
     throw new HttpError(400, 'A valid price is required')
   }
 
-  const design = await Design.findOne({
-    _id: designId,
-    ownerId: req.user.id,
-  })
+  const { data: designRow, error: designError } = await req.supabase
+    .from('designs')
+    .select(DESIGN_COLUMNS)
+    .eq('id', designId)
+    .eq('owner_id', req.user.id)
+    .maybeSingle()
 
-  if (!design) {
+  throwIfSupabaseError(designError, 'Design not found')
+
+  if (!designRow) {
     throw new HttpError(404, 'Design not found')
   }
 
-  let listing = await Listing.findOne({
-    sellerId: req.user.id,
-    designId: design.id,
-    status: 'active',
-  })
+  const design = mapDesign(designRow)
 
-  if (listing) {
-    listing.price = parsedPrice
-    listing.currency = currency || listing.currency
-    listing.description = description?.trim() || listing.description
-    listing.title = design.title
-    listing.previewImageUrl = design.previewImageUrl
-    await listing.save()
+  const { data: existingRow, error: existingError } = await req.supabase
+    .from('listings')
+    .select('id, currency, description')
+    .eq('seller_id', req.user.id)
+    .eq('design_id', design.id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  throwIfSupabaseError(existingError, 'Unable to load listing')
+
+  let listingId
+
+  if (existingRow) {
+    const { data: updated, error: updateError } = await req.supabase
+      .from('listings')
+      .update({
+        price: parsedPrice,
+        currency: currency || existingRow.currency,
+        description: description?.trim() || existingRow.description,
+        title: design.title,
+        preview_image_url: design.previewImageUrl,
+      })
+      .eq('id', existingRow.id)
+      .eq('seller_id', req.user.id)
+      .select('id')
+      .single()
+
+    throwIfSupabaseError(updateError, 'Unable to update listing')
+    listingId = updated.id
   } else {
-    listing = await Listing.create({
-      sellerId: req.user.id,
-      designId: design.id,
-      title: design.title,
-      description: description?.trim() || 'Listed from my saved designs.',
-      price: parsedPrice,
-      currency: currency || 'USD',
-      previewImageUrl: design.previewImageUrl,
-    })
+    const { data: created, error: createError } = await req.supabase
+      .from('listings')
+      .insert({
+        seller_id: req.user.id,
+        design_id: design.id,
+        title: design.title,
+        description: description?.trim() || 'Listed from my saved designs.',
+        price: parsedPrice,
+        currency: currency || 'USD',
+        preview_image_url: design.previewImageUrl,
+        status: 'active',
+      })
+      .select('id')
+      .single()
+
+    throwIfSupabaseError(createError, 'Unable to create listing')
+    listingId = created.id
   }
 
-  const populated = await populateListing(Listing.findById(listing.id))
+  const { data: populated, error: populateError } = await req.supabase
+    .from('listings')
+    .select(LISTING_SELECT)
+    .eq('id', listingId)
+    .single()
+
+  throwIfSupabaseError(populateError, 'Unable to load listing')
 
   res.status(201).json({
-    listing: serializeListing(populated, req.user.id),
+    listing: serializeListing(hydrateListing(populated), req.user.id),
   })
 })
 
 export const listListings = asyncHandler(async (req, res) => {
-  const listings = await populateListing(
-    Listing.find({ status: 'active' }).sort({ createdAt: -1 })
-  )
+  const { data, error } = await req.supabase
+    .from('listings')
+    .select(LISTING_SELECT)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+
+  throwIfSupabaseError(error, 'Unable to list listings')
 
   res.status(200).json({
-    listings: listings.map((listing) => serializeListing(listing, req.user.id)),
+    listings: (data || []).map((row) => serializeListing(hydrateListing(row), req.user.id)),
   })
 })
 
 export const listMyListings = asyncHandler(async (req, res) => {
-  const listings = await populateListing(
-    Listing.find({ sellerId: req.user.id, status: 'active' }).sort({ createdAt: -1 })
-  )
+  const { data, error } = await req.supabase
+    .from('listings')
+    .select(LISTING_SELECT)
+    .eq('seller_id', req.user.id)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+
+  throwIfSupabaseError(error, 'Unable to list listings')
 
   res.status(200).json({
-    listings: listings.map((listing) => serializeListing(listing, req.user.id)),
+    listings: (data || []).map((row) => serializeListing(hydrateListing(row), req.user.id)),
   })
 })
 
 export const getListing = asyncHandler(async (req, res) => {
-  const listing = await findActiveListing(req.params.id)
+  const listing = await findActiveListing(req.supabase, req.params.id)
 
   res.status(200).json({
     listing: serializeListing(listing, req.user.id),
@@ -126,20 +190,22 @@ export const getListing = asyncHandler(async (req, res) => {
 })
 
 export const deleteListing = asyncHandler(async (req, res) => {
-  assertObjectId(req.params.id, 'Listing not found')
+  assertListingId(req.params.id)
 
-  const listing = await Listing.findOne({
-    _id: req.params.id,
-    sellerId: req.user.id,
-    status: 'active',
-  })
+  const { data, error } = await req.supabase
+    .from('listings')
+    .update({ status: 'removed' })
+    .eq('id', req.params.id)
+    .eq('seller_id', req.user.id)
+    .eq('status', 'active')
+    .select('id')
+    .maybeSingle()
 
-  if (!listing) {
+  throwIfSupabaseError(error, 'Listing not found')
+
+  if (!data) {
     throw new HttpError(404, 'Listing not found')
   }
-
-  listing.status = 'removed'
-  await listing.save()
 
   res.status(200).json({
     deleted: true,
@@ -148,54 +214,46 @@ export const deleteListing = asyncHandler(async (req, res) => {
 })
 
 export const purchaseListing = asyncHandler(async (req, res) => {
-  const listing = await findActiveListing(req.params.id)
-  const sellerId = listing.sellerId._id.toString()
+  assertListingId(req.params.id)
 
-  if (sellerId === req.user.id) {
-    throw new HttpError(400, 'You cannot buy your own listing')
-  }
-
-  const sourceDesign = listing.designId
-  if (!sourceDesign) {
-    throw new HttpError(404, 'Listing design not found')
-  }
-
-  const copiedDesign = await Design.create(copyDesignForBuyer(sourceDesign, req.user.id, listing.title))
-  const purchase = await Purchase.create({
-    buyerId: req.user.id,
-    sellerId,
-    listingId: listing.id,
-    originalDesignId: sourceDesign.id,
-    copiedDesignId: copiedDesign.id,
-    price: listing.price,
-    currency: listing.currency,
-    paymentStatus: 'paid',
+  const { data, error } = await req.supabase.rpc('purchase_listing', {
+    p_listing_id: req.params.id,
   })
 
-  listing.status = 'sold'
-  listing.soldAt = new Date()
-  await listing.save()
+  throwIfSupabaseError(error, 'Unable to purchase listing')
 
-  const populatedPurchase = await Purchase.findById(purchase.id)
-    .populate('sellerId', 'name email')
-    .populate('listingId')
-    .populate('copiedDesignId')
+  const purchaseId = data?.purchase?.id
+  const copiedDesignId = data?.copied_design?.id || data?.purchase?.copied_design_id
+
+  const [{ data: purchaseRow, error: purchaseError }, { data: listingRow, error: listingError }] = await Promise.all([
+    req.supabase.from('purchases').select(PURCHASE_SELECT).eq('id', purchaseId).single(),
+    req.supabase.from('listings').select(LISTING_SELECT).eq('id', req.params.id).single(),
+  ])
+
+  throwIfSupabaseError(purchaseError, 'Unable to load purchase')
+  throwIfSupabaseError(listingError, 'Unable to load listing')
+
+  const copiedDesign = mapDesign(data?.copied_design)
+    || mapDesign(purchaseRow?.copied_design)
+    || (copiedDesignId ? mapDesign({ id: copiedDesignId }) : null)
 
   res.status(201).json({
-    purchase: serializePurchase(populatedPurchase),
+    purchase: serializePurchase(mapPurchase(purchaseRow)),
     savedDesign: serializeDesign(copiedDesign),
-    listing: serializeListing(listing, req.user.id),
+    listing: serializeListing(hydrateListing(listingRow), req.user.id),
   })
 })
 
 export const listPurchases = asyncHandler(async (req, res) => {
-  const purchases = await Purchase.find({ buyerId: req.user.id })
-    .sort({ createdAt: -1 })
-    .populate('sellerId', 'name email')
-    .populate('listingId')
-    .populate('copiedDesignId')
+  const { data, error } = await req.supabase
+    .from('purchases')
+    .select(PURCHASE_SELECT)
+    .eq('buyer_id', req.user.id)
+    .order('created_at', { ascending: false })
+
+  throwIfSupabaseError(error, 'Unable to list purchases')
 
   res.status(200).json({
-    purchases: purchases.map(serializePurchase),
+    purchases: (data || []).map((row) => serializePurchase(mapPurchase(row))),
   })
 })
