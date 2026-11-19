@@ -13,6 +13,7 @@ import { requireAuth } from '../middleware/auth.js'
 
 const router = express.Router()
 
+// Browse, create, and purchase all stay behind Bearer auth. Purchase is not a public fallback.
 router.use(requireAuth)
 
 router.get('/purchases', listPurchases)

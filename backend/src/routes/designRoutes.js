@@ -10,6 +10,7 @@ import { requireAuth } from '../middleware/auth.js'
 
 const router = express.Router()
 
+// Signed-out users cannot create or read saved designs. POST / writes to designs only.
 router.use(requireAuth)
 
 router.route('/').get(listDesigns).post(createDesign)

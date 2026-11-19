@@ -1,8 +1,14 @@
-import mongoose from 'mongoose'
-
-import { Design, Listing } from '../models/index.js'
+import { mapDesign } from '../db/map.js'
+import { isUuid } from '../utils/ids.js'
 import { HttpError, asyncHandler } from '../utils/httpError.js'
 import { serializeDesign } from '../utils/serializers.js'
+import { throwIfSupabaseError } from '../utils/supabaseErrors.js'
+
+const DESIGN_COLUMNS = `
+  id, owner_id, title, description, catalog_id, type, sleeve, colors, textures, layers,
+  is_logo_texture, is_full_texture, scene_theme, preview_image_url, source_design_id,
+  created_at, updated_at
+`
 
 const normalizeDesignBody = (body) => {
   const design = body.design || body
@@ -25,21 +31,42 @@ const normalizeDesignBody = (body) => {
   }
 }
 
-const findOwnedDesign = async (userId, designId) => {
-  if (!mongoose.isValidObjectId(designId)) {
+const toDesignInsert = (payload, ownerId) => ({
+  owner_id: ownerId,
+  title: payload.title,
+  description: payload.description || '',
+  catalog_id: payload.catalogId,
+  type: payload.type || 'tshirt',
+  sleeve: payload.sleeve || 'short',
+  colors: payload.colors || { body: '#EFBD48' },
+  textures: payload.textures || { logo: './me.jpg', full: './me.jpg' },
+  layers: payload.layers || [],
+  is_logo_texture: payload.isLogoTexture ?? true,
+  is_full_texture: payload.isFullTexture ?? false,
+  scene_theme: payload.sceneTheme || 'dark',
+  preview_image_url: payload.previewImageUrl || '',
+  source_design_id: isUuid(payload.sourceDesignId) ? payload.sourceDesignId : null,
+})
+
+const findOwnedDesign = async (supabase, userId, designId) => {
+  if (!isUuid(designId)) {
     throw new HttpError(404, 'Design not found')
   }
 
-  const design = await Design.findOne({
-    _id: designId,
-    ownerId: userId,
-  })
+  const { data, error } = await supabase
+    .from('designs')
+    .select(DESIGN_COLUMNS)
+    .eq('id', designId)
+    .eq('owner_id', userId)
+    .maybeSingle()
 
-  if (!design) {
+  throwIfSupabaseError(error, 'Design not found')
+
+  if (!data) {
     throw new HttpError(404, 'Design not found')
   }
 
-  return design
+  return mapDesign(data)
 }
 
 export const createDesign = asyncHandler(async (req, res) => {
@@ -53,26 +80,35 @@ export const createDesign = asyncHandler(async (req, res) => {
     throw new HttpError(400, 'Design catalogId is required')
   }
 
-  const design = await Design.create({
-    ...payload,
-    ownerId: req.user.id,
-  })
+  const { data, error } = await req.supabase
+    .from('designs')
+    .insert(toDesignInsert(payload, req.user.id))
+    .select(DESIGN_COLUMNS)
+    .single()
+
+  throwIfSupabaseError(error, 'Unable to save design')
 
   res.status(201).json({
-    design: serializeDesign(design),
+    design: serializeDesign(mapDesign(data)),
   })
 })
 
 export const listDesigns = asyncHandler(async (req, res) => {
-  const designs = await Design.find({ ownerId: req.user.id }).sort({ createdAt: -1 })
+  const { data, error } = await req.supabase
+    .from('designs')
+    .select(DESIGN_COLUMNS)
+    .eq('owner_id', req.user.id)
+    .order('created_at', { ascending: false })
+
+  throwIfSupabaseError(error, 'Unable to list designs')
 
   res.status(200).json({
-    designs: designs.map(serializeDesign),
+    designs: (data || []).map((row) => serializeDesign(mapDesign(row))),
   })
 })
 
 export const getDesign = asyncHandler(async (req, res) => {
-  const design = await findOwnedDesign(req.user.id, req.params.id)
+  const design = await findOwnedDesign(req.supabase, req.user.id, req.params.id)
 
   res.status(200).json({
     design: serializeDesign(design),
@@ -80,12 +116,24 @@ export const getDesign = asyncHandler(async (req, res) => {
 })
 
 export const deleteDesign = asyncHandler(async (req, res) => {
-  const design = await findOwnedDesign(req.user.id, req.params.id)
-  await Listing.updateMany(
-    { designId: design.id, sellerId: req.user.id, status: 'active' },
-    { status: 'removed' }
-  )
-  await design.deleteOne()
+  const design = await findOwnedDesign(req.supabase, req.user.id, req.params.id)
+
+  const { error: listingError } = await req.supabase
+    .from('listings')
+    .update({ status: 'removed' })
+    .eq('design_id', design.id)
+    .eq('seller_id', req.user.id)
+    .eq('status', 'active')
+
+  throwIfSupabaseError(listingError, 'Unable to update listings')
+
+  const { error } = await req.supabase
+    .from('designs')
+    .delete()
+    .eq('id', design.id)
+    .eq('owner_id', req.user.id)
+
+  throwIfSupabaseError(error, 'Unable to delete design')
 
   res.status(200).json({
     deleted: true,

@@ -4,7 +4,6 @@ import express from 'express'
 
 import { connectDB } from './config/db.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
-import './models/index.js'
 import authRoutes from './routes/authRoutes.js'
 import designRoutes from './routes/designRoutes.js'
 import listingRoutes from './routes/listingRoutes.js'
