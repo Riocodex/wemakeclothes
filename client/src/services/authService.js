@@ -7,6 +7,7 @@ import {
 } from './apiClient'
 
 export const AUTH_CHANGE_EVENT = 'wmc-auth-change'
+export const AUTH_DISMISS_EVENT = 'wmc-auth-dismiss'
 
 const notifyAuthChange = () => {
   window.dispatchEvent(new Event(AUTH_CHANGE_EVENT))

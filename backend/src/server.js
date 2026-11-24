@@ -3,6 +3,7 @@ import dotenv from 'dotenv'
 import express from 'express'
 
 import { connectDB } from './config/db.js'
+import { hasSupabaseConfig } from './config/supabase.js'
 import { errorHandler, notFound } from './middleware/errorHandler.js'
 import authRoutes from './routes/authRoutes.js'
 import designRoutes from './routes/designRoutes.js'
@@ -30,6 +31,7 @@ app.get('/', (_req, res) => {
 app.get('/api/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
+    database: hasSupabaseConfig() ? 'configured' : 'missing',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   })

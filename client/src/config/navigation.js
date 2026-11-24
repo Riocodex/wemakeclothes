@@ -1,9 +1,15 @@
 import state from '../store'
+import { hasAuthSession } from '../services/authService'
 
 export const AUTH_REQUEST_EVENT = 'wmc-auth-request'
 
-export const requestSignIn = (message) => {
-  window.dispatchEvent(new CustomEvent(AUTH_REQUEST_EVENT, { detail: { message } }))
+export const requestSignIn = (message, options = {}) => {
+  window.dispatchEvent(new CustomEvent(AUTH_REQUEST_EVENT, {
+    detail: {
+      message,
+      mode: options.mode === 'register' ? 'register' : 'login',
+    },
+  }))
 }
 
 export const getView = (snap) => {
@@ -42,6 +48,11 @@ export const goMarketplace = () => {
 }
 
 export const goMyDesigns = () => {
+  if (!hasAuthSession()) {
+    requestSignIn('Create an account to see My Designs.', { mode: 'register' })
+    return
+  }
+
   state.intro = true
   state.myDesignsOpen = true
   state.marketplaceOpen = false

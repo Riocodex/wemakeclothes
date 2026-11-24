@@ -37,7 +37,10 @@ const CanvasStage = () => {
 function App() {
   const snap = useSnapshot(state)
   const useCustomizerShell = (!snap.intro && !snap.viewerOpen) || snap.viewerOpen
-  const appClass = `app transition-all ease-in ${useCustomizerShell ? 'app-customizer' : ''}`
+  const sceneMode = useCustomizerShell
+    ? (snap.sceneTheme === 'light' ? 'app--scene-light' : 'app--scene-dark')
+    : 'app--scene-dark'
+  const appClass = `app transition-all ease-in ${useCustomizerShell ? 'app-customizer' : ''} ${sceneMode}`
 
   return (
     <main className={appClass}>

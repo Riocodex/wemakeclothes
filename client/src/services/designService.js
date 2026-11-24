@@ -22,7 +22,7 @@ const sampleDesign = (catalogId, color, logo = './me.jpg') => ({
   parts: ['body'],
   colors: { body: color },
   textures: { logo, full: logo },
-  isLogoTexture: true,
+  isLogoTexture: false,
   isFullTexture: false,
   layers: []
 })
@@ -43,25 +43,25 @@ const SAMPLE_LISTINGS = [
   },
   {
     id: 'sample-night-runner',
-    title: 'Night Runner Long Sleeve',
-    description: 'Dark long-sleeve base made for bold logo artwork.',
+    title: 'Night Runner Tee',
+    description: 'Dark tee made for bold logo artwork.',
     sellerName: 'Northline Goods',
     price: 42,
     previewImage: samplePreview('NIGHT RUNNER', '#232B36', '#C4D7D1'),
-    design: sampleDesign('tshirt_long', '#232B36'),
+    design: sampleDesign('tshirt_short', '#232B36'),
     sceneTheme: 'dark',
     isSample: true,
     createdAt: '2026-02-03T14:30:00.000Z',
     updatedAt: '2026-02-03T14:30:00.000Z',
   },
   {
-    id: 'sample-gallery-dress',
-    title: 'Gallery Dress',
-    description: 'Minimal dress concept with a soft gallery-ready palette.',
+    id: 'sample-gallery-tee',
+    title: 'Gallery Tee',
+    description: 'Minimal tee with a soft gallery-ready palette.',
     sellerName: 'Studio Vale',
     price: 64,
     previewImage: samplePreview('GALLERY DRESS', '#7C9A92', '#F1DED5'),
-    design: sampleDesign('dress', '#7C9A92'),
+    design: sampleDesign('tshirt_short', '#7C9A92'),
     sceneTheme: 'light',
     isSample: true,
     createdAt: '2026-03-18T09:45:00.000Z',
@@ -101,27 +101,9 @@ const writeListings = (items) => {
 
 const hasBackendSession = () => Boolean(getAuthToken())
 
-const saveDesignLocally = ({ title, design, previewImage, sceneTheme }) => {
-  const now = new Date().toISOString()
-  const record = {
-    id: crypto.randomUUID(),
-    title,
-    design,
-    previewImage,
-    sceneTheme,
-    createdAt: now,
-    updatedAt: now,
-  }
-
-  const existing = readAll()
-  existing.unshift(record)
-  writeAll(existing)
-  return record
-}
-
 export const saveDesign = async ({ title, design, previewImage, sceneTheme }) => {
   if (!hasBackendSession()) {
-    return saveDesignLocally({ title, design, previewImage, sceneTheme })
+    throw new ApiError('Create an account to save this design.', 401, { code: 'AUTH_REQUIRED' })
   }
 
   const response = await apiClient.post('/designs', {
@@ -135,7 +117,7 @@ export const saveDesign = async ({ title, design, previewImage, sceneTheme }) =>
 }
 
 export const listDesigns = async () => {
-  if (!hasBackendSession()) return readAll()
+  if (!hasBackendSession()) return []
 
   const response = await apiClient.get('/designs')
   return response.designs || []

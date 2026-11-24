@@ -127,44 +127,17 @@ const ClassicShirt = ({ snap, garmentConfig, nodes }) => {
 
 const Shirt = () => {
   const snap = useSnapshot(state)
-  const catalogId = snap.design?.catalogId || 'tshirt_short'
-  const garmentConfig = GARMENT_CATALOG[catalogId] || GARMENT_CATALOG.tshirt_short
-  const { nodes, materials } = useGLTF(garmentConfig.modelPath)
+  const garmentConfig = GARMENT_CATALOG.tshirt_short
+  const { nodes } = useGLTF(garmentConfig.modelPath)
 
-  const useClassic =
-    nodes?.T_Shirt_male?.geometry && materials?.lambert1
-
-  const fallbackMaterial = useMemo(
-    () => createShirtMaterial(getBodyColor(snap)),
-    [snap.design?.colors?.body, snap.color]
-  )
-
-  useEffect(() => () => fallbackMaterial.dispose(), [fallbackMaterial])
-
-  if (useClassic) {
-    return (
-      <ClassicShirt
-        snap={snap}
-        garmentConfig={garmentConfig}
-        nodes={nodes}
-      />
-    )
-  }
-
-  const shirtRef = useRef()
-  const firstMesh = useMemo(() => {
-    const n = garmentConfig.meshName && nodes[garmentConfig.meshName]
-    if (n?.geometry) return n.geometry
-    const found = Object.values(nodes).find((node) => node?.isMesh && node.geometry)
-    return found?.geometry
-  }, [nodes, garmentConfig.meshName])
-
-  if (!firstMesh) return null
+  if (!nodes?.T_Shirt_male?.geometry) return null
 
   return (
-    <group ref={shirtRef}>
-      <mesh castShadow geometry={firstMesh} material={fallbackMaterial} dispose={null} />
-    </group>
+    <ClassicShirt
+      snap={snap}
+      garmentConfig={garmentConfig}
+      nodes={nodes}
+    />
   )
 }
 

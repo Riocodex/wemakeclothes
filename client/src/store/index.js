@@ -16,6 +16,7 @@ const state = proxy({
   viewerListing: null,
   /* Legacy: synced from design (SSOT) via syncRootFromDesign */
   color: initialDesign.colors.body,
+  logoColor: null,
   sceneTheme: "dark",
   isLogoTexture: true,
   isFullTexture: false,

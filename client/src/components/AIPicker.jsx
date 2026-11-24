@@ -5,7 +5,7 @@ const AIPicker = ({prompt, setPrompt, generatingImg,handleSubmit}) => {
     <div className='aipicker-container'>
       <p className="eyebrow text-ink-500">AI artwork</p>
       <textarea
-        placeholder='Ask Ai...'
+        placeholder='Describe your artwork…'
         rows={5}
         value={prompt}
         onChange={(e)=>setPrompt(e.target.value)}
@@ -14,7 +14,7 @@ const AIPicker = ({prompt, setPrompt, generatingImg,handleSubmit}) => {
       <div className="grid grid-cols-2 gap-2">
         {generatingImg ? (
           <button type="button" className="btn btn-secondary btn-sm col-span-2" disabled>
-            Asking AI
+            Generating…
           </button>
         ):(
           <>
@@ -30,7 +30,7 @@ const AIPicker = ({prompt, setPrompt, generatingImg,handleSubmit}) => {
               className="btn btn-primary btn-sm"
               onClick={()=>handleSubmit('full')}
             >
-              AI Full
+              AI full print
             </button>
           </>
         )}

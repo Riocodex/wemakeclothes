@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSnapshot } from 'valtio'
 
@@ -29,7 +30,8 @@ import {
   StatusBadge,
   useAuthSession,
 } from '../components/MarketplaceUI'
-import { BagIcon, EyeIcon, GridIcon, LockIcon, ReceiptIcon, SearchIcon, TagIcon } from '../components/Icons'
+import { isRasterPreview } from '../components/GarmentLook'
+import { BagIcon, CloseIcon, CubeIcon, GridIcon, LockIcon, ReceiptIcon, SearchIcon, TagIcon } from '../components/Icons'
 
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Featured' },
@@ -38,50 +40,125 @@ const SORT_OPTIONS = [
   { value: 'price-desc', label: 'Price: high to low' },
 ]
 
-const MarketplaceCard = ({ item, signedIn, onBuy, onView, onUnlist }) => {
+const ProductLook = ({ item, mode, onMode, onClose, onBuy, onView, onUnlist, signedIn }) => {
+  const status = getListingStatus(item)
+  const purchasable = status === 'active'
+  const hasRender = isRasterPreview(item?.previewImage)
+  const color = item?.design?.colors?.body
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return createPortal(
+    <div className="look-backdrop" role="presentation" onClick={onClose}>
+      <div
+        className="look-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="look-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="look-stage">
+          <ListingPreview item={item} flat={mode === 'shirt'} />
+          {hasRender && (
+            <div className="look-switch" role="tablist" aria-label="Preview style">
+              <button type="button" role="tab" aria-selected={mode === 'shirt'} onClick={() => onMode('shirt')}>Shirt</button>
+              <button type="button" role="tab" aria-selected={mode === 'render'} onClick={() => onMode('render')}>Saved photo</button>
+            </div>
+          )}
+        </div>
+        <div className="look-details">
+          <button type="button" className="icon-btn look-close" onClick={onClose} aria-label="Close">
+            <CloseIcon />
+          </button>
+          <p className="eyebrow text-brand-600">{getGarmentLabel(item.design)}</p>
+          <h2 id="look-title" className="look-title">{item.title}</h2>
+          <p className="look-price">{formatPrice(item.price, item.currency)}</p>
+          <p className="mt-1 text-sm text-ink-500">by {getSellerName(item)}</p>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <StatusBadge item={item} />
+            {item.isMine && <span className="badge badge-brand">Your listing</span>}
+            {color && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-500">
+                <span className="h-3.5 w-3.5 rounded-full ring-1 ring-ink-900/15" style={{ background: color }} />
+                Color
+              </span>
+            )}
+          </div>
+          {item.description ? (
+            <p className="mt-4 text-sm leading-relaxed text-ink-600">{item.description}</p>
+          ) : null}
+          <div className="mt-6 flex flex-col gap-2">
+            {item.isMine ? (
+              <button type="button" className="btn btn-secondary btn-block" onClick={() => onUnlist(item)}>
+                Unlist
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-brand btn-block"
+                onClick={() => onBuy(item)}
+                disabled={!purchasable}
+              >
+                {purchasable && !signedIn && <LockIcon className="h-3.5 w-3.5" />}
+                {purchasable ? 'Buy design' : status === 'sold' ? 'Sold' : 'Unavailable'}
+              </button>
+            )}
+            <button type="button" className="btn btn-secondary btn-block" onClick={() => onView(item)}>
+              <CubeIcon />
+              Spin in 3D
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+const MarketplaceCard = ({ item, signedIn, onBuy, onLook, onView, onUnlist }) => {
   const status = getListingStatus(item)
   const purchasable = status === 'active'
 
   return (
-    <article className="listing-card">
+    <article
+      className="shop-card"
+      onMouseEnter={() => { state.logoColor = item.design?.colors?.body || null }}
+      onMouseLeave={() => { state.logoColor = null }}
+    >
       <button
         type="button"
-        className="listing-media"
-        onClick={() => onView(item)}
-        aria-label={`View ${item.title} in 3D`}
+        className="shop-shot"
+        onClick={() => onLook(item)}
+        aria-label={`View ${item.title}`}
       >
-        <ListingPreview item={item} />
-        <div className="absolute inset-x-2.5 top-2.5 flex flex-wrap items-start justify-between gap-1.5 sm:inset-x-3 sm:top-3">
+        <ListingPreview item={item} flat />
+        <span className="shop-shot-status">
           <StatusBadge item={item} className="!bg-white/95 shadow-sm" />
-          {item.isMine && <span className="badge badge-overlay">Your listing</span>}
-        </div>
-        <span className="listing-media-hover">
-          <span className="btn btn-inverse btn-sm shadow-lift">
-            <EyeIcon />
-            View in 3D
-          </span>
+          {item.isMine && <span className="badge badge-overlay">Yours</span>}
         </span>
       </button>
 
-      <div className="flex flex-1 flex-col p-3.5 sm:p-4">
+      <div className="shop-meta">
         <p className="eyebrow text-ink-500">{getGarmentLabel(item.design)}</p>
-        <div className="mt-1 flex items-start justify-between gap-2">
-          <h3 className="min-w-0 truncate text-sm font-semibold text-ink-900 sm:text-[0.9375rem]">{item.title}</h3>
-          <p className="shrink-0 text-sm font-bold text-ink-900 sm:text-[0.9375rem]">{formatPrice(item.price, item.currency)}</p>
+        <div className="mt-1 flex items-baseline justify-between gap-2">
+          <h3 className="shop-title">{item.title}</h3>
+          <p className="shop-price">{formatPrice(item.price, item.currency)}</p>
         </div>
-        <p className="mt-0.5 truncate text-xs text-ink-500">by {getSellerName(item)}</p>
-        {item.description ? (
-          <p className="mt-2 line-clamp-2 hidden text-xs leading-relaxed text-ink-600 sm:block">{item.description}</p>
-        ) : null}
+        <p className="mt-1 truncate text-xs text-ink-500">{getSellerName(item)}</p>
 
-        <div className="mt-auto flex gap-2 pt-4">
+        <div className="mt-2.5 flex gap-2">
           {item.isMine ? (
             <>
-              <button type="button" className="btn btn-primary btn-sm flex-1" onClick={() => onView(item)}>
-                <EyeIcon className="hidden h-4 w-4 sm:block" />
-                View design
+              <button type="button" className="btn btn-primary btn-sm flex-1" onClick={() => onLook(item)}>
+                View shirt
               </button>
-              <button type="button" className="btn btn-secondary btn-sm flex-1 sm:flex-none" onClick={() => onUnlist(item)}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => onUnlist(item)}>
                 Unlist
               </button>
             </>
@@ -95,17 +172,17 @@ const MarketplaceCard = ({ item, signedIn, onBuy, onView, onUnlist }) => {
                 title={purchasable && !signedIn ? 'Sign in to buy' : undefined}
               >
                 {purchasable && !signedIn && <LockIcon className="h-3.5 w-3.5" />}
-                {purchasable ? 'Buy design' : status === 'sold' ? 'Sold' : 'Unavailable'}
+                {purchasable ? 'Buy' : status === 'sold' ? 'Sold' : 'Unavailable'}
               </button>
               <button
                 type="button"
-                className="btn btn-secondary btn-sm !px-2.5 sm:!px-3"
+                className="btn btn-secondary btn-sm"
                 onClick={() => onView(item)}
-                aria-label={`View ${item.title}`}
-                title="View design"
+                aria-label={`Open ${item.title} in 3D`}
+                title="Open in 3D"
               >
-                <EyeIcon />
-                <span className="hidden lg:inline">View</span>
+                <CubeIcon />
+                3D
               </button>
             </>
           )}
@@ -128,6 +205,8 @@ const Marketplace = () => {
   const [query, setQuery] = useState('')
   const [garmentFilter, setGarmentFilter] = useState('all')
   const [sortBy, setSortBy] = useState('featured')
+  const [lookItem, setLookItem] = useState(null)
+  const [lookMode, setLookMode] = useState('shirt')
 
   const visibleListings = activeView === 'mine' ? listings.filter((item) => item.isMine) : listings
 
@@ -188,11 +267,17 @@ const Marketplace = () => {
     }
   }, [snap.marketplaceOpen, refreshKey, signedIn])
 
+  const openLook = (item) => {
+    setLookMode('shirt')
+    setLookItem(item)
+  }
+
   const handleViewListing = async (item) => {
+    setLookItem(null)
     const listing = item.design ? item : await getMarketplaceListingById(item.id)
     if (!listing) return
     state.design = migrateOrCreateDesign(listing.design)
-    state.sceneTheme = 'dark'
+    state.sceneTheme = 'light'
     syncRootFromDesign(state)
     state.viewerListing = listing
     state.viewerOpen = true
@@ -255,11 +340,11 @@ const Marketplace = () => {
           transition={{ duration: 0.25, ease: 'easeOut' }}
         >
           <div className="page-inner">
-            <header className="page-hero flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <header className="page-hero page-hero--shop flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="eyebrow text-brand-700">Marketplace</p>
-                <h1 className="page-title mt-2">Shop independent designs</h1>
-                <p className="page-subtitle">Browse, buy, and manage listed clothing designs. Every purchase lands in My Designs, ready to customize.</p>
+                <p className="eyebrow text-brand-600">Marketplace</p>
+                <h1 className="page-title mt-2">Shop the <span>collection</span></h1>
+                <p className="page-subtitle !mt-2">Browse every piece as a shirt first. Open 3D only when you want to spin it.</p>
               </div>
 
               <div className="segmented self-start lg:self-auto" role="tablist" aria-label="Marketplace sections">
@@ -334,13 +419,23 @@ const Marketplace = () => {
               <EmptyState
                 icon={TagIcon}
                 title={activeView === 'mine' ? 'You have no live listings' : 'No listings yet'}
-                message="No listings yet. Open My Designs and list one of your saved designs."
-                action={
+                message={signedIn
+                  ? 'No listings yet. Open My Designs and list one of your saved designs.'
+                  : 'No listings yet. Create an account, save a design, then list it here.'}
+                action={signedIn ? (
                   <button type="button" className="btn btn-primary btn-sm" onClick={goMyDesigns}>
                     <GridIcon />
                     Go to My Designs
                   </button>
-                }
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => requestSignIn('Create an account to save and list designs.', { mode: 'register' })}
+                  >
+                    Create account
+                  </button>
+                )}
               />
             )}
 
@@ -358,13 +453,14 @@ const Marketplace = () => {
                     action={<button type="button" className="btn btn-secondary btn-sm" onClick={clearFilters}>Clear filters</button>}
                   />
                 ) : (
-                  <div className="listing-grid">
+                  <div className="shop-grid">
                     {filteredListings.map((item) => (
                       <MarketplaceCard
                         key={item.id}
                         item={item}
                         signedIn={signedIn}
                         onBuy={handleBuy}
+                        onLook={openLook}
                         onView={handleViewListing}
                         onUnlist={handleUnlist}
                       />
@@ -405,6 +501,18 @@ const Marketplace = () => {
               <PurchaseList items={purchases} />
             )}
           </div>
+          {lookItem && (
+            <ProductLook
+              item={lookItem}
+              mode={lookMode}
+              onMode={setLookMode}
+              onClose={() => setLookItem(null)}
+              onBuy={handleBuy}
+              onView={handleViewListing}
+              onUnlist={handleUnlist}
+              signedIn={signedIn}
+            />
+          )}
         </motion.section>
       )}
     </AnimatePresence>

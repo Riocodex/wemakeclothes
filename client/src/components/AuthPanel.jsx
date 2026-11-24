@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSnapshot } from 'valtio'
 
 import state from '../store'
 import {
   AUTH_CHANGE_EVENT,
+  AUTH_DISMISS_EVENT,
   fetchCurrentUser,
   getCurrentStoredUser,
   hasAuthSession,
@@ -63,7 +65,7 @@ const AuthPanel = () => {
     const syncUser = () => setUser(getCurrentStoredUser())
     const handleRequest = (event) => {
       if (hasAuthSession()) return
-      setMode('login')
+      setMode(event.detail?.mode === 'register' ? 'register' : 'login')
       setError('')
       setNotice(event.detail?.message || '')
       setOpen(true)
@@ -79,10 +81,10 @@ const AuthPanel = () => {
   useEffect(() => {
     if (!open) return
     const onKey = (event) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') dismiss()
     }
     const onPointerDown = (event) => {
-      if (rootRef.current && !rootRef.current.contains(event.target)) setOpen(false)
+      if (rootRef.current && !rootRef.current.contains(event.target)) dismiss()
     }
     window.addEventListener('keydown', onKey)
     document.addEventListener('pointerdown', onPointerDown)
@@ -128,9 +130,18 @@ const AuthPanel = () => {
     setError('')
   }
 
-  if (!snap.intro && !snap.viewerOpen) return null
+  const dismiss = () => {
+    setOpen(false)
+    setNotice('')
+    if (!hasAuthSession()) {
+      window.dispatchEvent(new Event(AUTH_DISMISS_EVENT))
+    }
+  }
+
+  const inCustomizer = !snap.intro && !snap.viewerOpen
 
   if (user) {
+    if (inCustomizer) return null
     const role = ROLE_LABELS[user.role] || null
     return (
       <div className="auth-user">
@@ -146,38 +157,29 @@ const AuthPanel = () => {
     )
   }
 
-  return (
-    <div ref={rootRef}>
-      <button
-        type="button"
-        className="auth-trigger"
-        aria-expanded={open}
-        onClick={() => {
-          setNotice('')
-          setOpen((current) => !current)
-        }}
-      >
-        Sign in
-      </button>
+  if (inCustomizer && !open) return null
 
-      <AnimatePresence>
-        {open && (
-          <motion.form
-              className="auth-popover surface-card p-5 text-ink-900 shadow-lift"
-              onSubmit={handleSubmit}
-              initial={{ opacity: 0, y: -6, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.98 }}
-              transition={{ duration: 0.16 }}
-            >
+  const accountForm = (
+    <motion.form
+      className={inCustomizer
+        ? 'modal-panel w-full text-ink-900 sm:max-w-md'
+        : 'auth-popover surface-card p-5 text-ink-900 shadow-lift'}
+      onSubmit={handleSubmit}
+      initial={{ opacity: 0, y: inCustomizer ? 16 : -6, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: inCustomizer ? 8 : -6, scale: 0.98 }}
+      transition={{ duration: 0.16 }}
+      onClick={(event) => event.stopPropagation()}
+    >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">
-                    {mode === 'register' ? 'Create your account' : 'Welcome back'}
+                  <p className="eyebrow text-brand-600">Wimik account</p>
+                  <h2 className="display mt-1 text-xl leading-tight">
+                    {mode === 'register' ? 'Join Wimik' : 'Welcome back'}
                   </h2>
-                  <p className="mt-0.5 text-sm text-ink-500">
+                  <p className="mt-1.5 text-sm text-ink-500">
                     {mode === 'register'
-                      ? 'Save designs to your account and buy from creators.'
+                      ? 'Save your designs, sell them, and shop the community.'
                       : 'Sign in to buy designs and sync your studio.'}
                   </p>
                 </div>
@@ -185,7 +187,7 @@ const AuthPanel = () => {
                   type="button"
                   className="icon-btn -mr-2 -mt-1 text-ink-500 hover:bg-ink-100 hover:text-ink-900"
                   aria-label="Close"
-                  onClick={() => setOpen(false)}
+                  onClick={dismiss}
                 >
                   <CloseIcon />
                 </button>
@@ -206,7 +208,7 @@ const AuthPanel = () => {
                   className="segmented-btn flex-1 justify-center"
                   onClick={() => switchMode('login')}
                 >
-                  Login
+                  Sign in
                 </button>
                 <button
                   type="button"
@@ -215,7 +217,7 @@ const AuthPanel = () => {
                   className="segmented-btn flex-1 justify-center"
                   onClick={() => switchMode('register')}
                 >
-                  Register
+                  Join
                 </button>
               </div>
 
@@ -264,10 +266,38 @@ const AuthPanel = () => {
               )}
 
               <button type="submit" className="btn btn-primary btn-block mt-5" disabled={loading}>
-                {loading ? 'Working...' : mode === 'register' ? 'Create account' : 'Login'}
+                {loading ? 'Working...' : mode === 'register' ? 'Create account' : 'Sign in'}
               </button>
-          </motion.form>
-        )}
+    </motion.form>
+  )
+
+  if (inCustomizer) {
+    return createPortal(
+      <div className="modal-backdrop" style={{ zIndex: 80 }} onClick={dismiss}>
+        <AnimatePresence>{open && accountForm}</AnimatePresence>
+      </div>,
+      document.body
+    )
+  }
+
+  return (
+    <div ref={rootRef}>
+      <button
+        type="button"
+        className="auth-trigger"
+        aria-expanded={open}
+        onClick={() => {
+          setNotice('')
+          setMode('login')
+          setError('')
+          setOpen((current) => !current)
+        }}
+      >
+        Sign in
+      </button>
+
+      <AnimatePresence>
+        {open && accountForm}
       </AnimatePresence>
     </div>
   )

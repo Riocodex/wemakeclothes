@@ -78,3 +78,19 @@ export const ReceiptIcon = (props) => (
 export const AlertIcon = (props) => (
   <Icon {...props}><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5" /><path d="M12 16.5h.01" /></Icon>
 )
+
+export const WimikMark = ({ className = 'h-4 w-4', ...props }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    className={className}
+    {...props}
+  >
+    <path d="M2.2 3.2h3.1l2.2 7.1L10.5 3.2h3l2.2 7.1 2.2-7.1h3.1L16.8 16.8h-3.3L11.9 9.2l-1.6 7.6H7Z" />
+  </svg>
+)
+
+export const CubeIcon = (props) => (
+  <Icon {...props}><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="m4 7.5 8 4.5 8-4.5" /><path d="M12 12v9" /></Icon>
+)

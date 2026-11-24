@@ -1,15 +1,24 @@
 export const SCENE_THEMES = {
   light: {
-    background: '#ffffff',
+    background: '#e8eaef',
     environment: 'city',
+    ambient: 0.72,
+    envIntensity: 0.55,
+    roughness: 0.82,
   },
   dark: {
-    background: '#111827',
+    background: '#151922',
     environment: 'city',
+    ambient: 0.45,
+    envIntensity: 0.7,
+    roughness: 0.78,
   },
   neutral: {
-    background: '#ffffff',
+    background: '#e8eaef',
     environment: 'city',
+    ambient: 0.72,
+    envIntensity: 0.55,
+    roughness: 0.82,
   },
 }
 

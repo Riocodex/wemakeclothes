@@ -15,10 +15,7 @@ export const formatPrice = (value, currency) => {
   }).format(amount)
 }
 
-export const getGarmentLabel = (design) => {
-  const id = design?.catalogId || design?.garmentType
-  return GARMENT_CATALOG[id]?.label || 'Garment'
-}
+export const getGarmentLabel = () => GARMENT_CATALOG.tshirt_short?.label || 'T-shirt'
 
 export const getSellerName = (item) =>
   item?.sellerName || item?.seller?.name || 'Independent seller'

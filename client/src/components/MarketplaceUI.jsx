@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from 'react'
 
+import GarmentLook, { isRasterPreview } from './GarmentLook'
 import { AlertIcon } from './Icons'
 import {
   STATUS_LABELS,
@@ -56,28 +57,24 @@ export const PurchaseList = ({ items }) => (
       ))}
     </ul>
     <p className="border-t border-ink-200/70 bg-ink-50 px-4 py-3 text-xs text-ink-500">
-      Purchased copies live in My Designs, ready to open in the editor.
+      Every purchase lands in My Designs as your own copy, ready to restyle.
     </p>
   </div>
 )
 
-export const ListingPreview = ({ item, className = '' }) => {
-  const color = item?.design?.colors?.body || '#EFBD48'
-
-  if (item?.previewImage) {
-    return <img src={item.previewImage} alt={item.title || ''} className={`h-full w-full object-cover ${className}`} loading="lazy" />
+export const ListingPreview = ({ item, className = '', flat = false }) => {
+  if (!flat && isRasterPreview(item?.previewImage)) {
+    return (
+      <img
+        src={item.previewImage}
+        alt={item?.title || ''}
+        className={`h-full w-full object-contain ${className}`}
+        loading="lazy"
+      />
+    )
   }
 
-  return (
-    <div
-      className={`flex h-full w-full items-center justify-center ${className}`}
-      style={{ background: `linear-gradient(160deg, ${color}, ${color}cc)` }}
-    >
-      <div className="flex h-24 w-20 items-center justify-center rounded-lg border border-white/40 bg-white/25 text-xs font-black tracking-widest text-white">
-        WMC
-      </div>
-    </div>
-  )
+  return <GarmentLook design={item?.design} title={item?.title} className={className} />
 }
 
 export const StatusBadge = ({ item, className = '' }) => {
@@ -93,8 +90,8 @@ export const SkeletonGrid = ({ count = 6 }) => (
   <div className="listing-grid" aria-busy="true" aria-label="Loading">
     {Array.from({ length: count }).map((_, index) => (
       <div key={index} className="listing-card">
-        <div className="skeleton rounded-none" style={{ aspectRatio: '4 / 5' }} />
-        <div className="space-y-2 p-4">
+        <div className="skeleton rounded-2xl" style={{ aspectRatio: '4 / 5' }} />
+        <div className="space-y-2 px-0.5 pt-3">
           <div className="skeleton h-4 w-3/4" />
           <div className="skeleton h-3 w-1/2" />
           <div className="skeleton mt-4 h-9 w-full rounded-full" />
@@ -109,7 +106,7 @@ export const ErrorState = ({ message, onRetry }) => (
     <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-rose-100 text-rose-600">
       <AlertIcon className="h-5 w-5" />
     </span>
-    <p className="mt-4 text-base font-semibold text-ink-900">Something went wrong</p>
+    <p className="display mt-4 text-lg text-ink-900">Something went wrong</p>
     <p className="mt-1 max-w-sm text-sm text-ink-500">{message}</p>
     {onRetry && (
       <button type="button" className="btn btn-secondary btn-sm mt-5" onClick={onRetry}>
@@ -122,11 +119,11 @@ export const ErrorState = ({ message, onRetry }) => (
 export const EmptyState = ({ icon: Icon, title, message, action }) => (
   <div className="state-card">
     {Icon && (
-      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-ink-100 text-ink-600">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600">
         <Icon className="h-5 w-5" />
       </span>
     )}
-    <p className="mt-4 text-base font-semibold text-ink-900">{title}</p>
+    <p className="display mt-4 text-lg text-ink-900">{title}</p>
     <p className="mt-1 max-w-sm text-sm text-ink-500">{message}</p>
     {action && <div className="mt-5">{action}</div>}
   </div>

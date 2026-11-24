@@ -3,6 +3,8 @@ import { useSnapshot } from 'valtio'
 
 import state from '../store'
 import AuthPanel from './AuthPanel'
+import { useAuthSession } from './MarketplaceUI'
+import { shirtButton, shirtInk } from './GarmentLook'
 import { ArrowLeftIcon, BagIcon, GridIcon, PlusIcon } from './Icons'
 import {
   getView,
@@ -30,7 +32,16 @@ const HEADER_TONE = {
 
 const AppNav = () => {
   const snap = useSnapshot(state)
+  const { signedIn } = useAuthSession()
   const view = getView(snap)
+  const shirtColor = view === 'viewer'
+    ? snap.viewerListing?.design?.colors?.body
+    : view === 'marketplace'
+      ? snap.logoColor
+      : snap.design?.colors?.body || snap.color
+  const activeShirt = shirtColor || snap.design?.colors?.body || snap.color
+  const logoColor = shirtInk(activeShirt)
+  const designButton = shirtButton(activeShirt)
 
   const items = [
     {
@@ -58,11 +69,11 @@ const AppNav = () => {
       icon: GridIcon,
       onClick: goMyDesigns,
       active: view === 'myDesigns',
-      show: true,
+      show: signedIn,
     },
     {
       key: 'create',
-      full: 'Create Design',
+      full: 'Design yours',
       short: 'Create',
       icon: PlusIcon,
       onClick: goCreate,
@@ -75,9 +86,8 @@ const AppNav = () => {
   return (
     <header className={`site-header site-header--${HEADER_TONE[view]}`}>
       <div className="site-header-inner">
-        <button type="button" className="site-brand" onClick={goHome} aria-label="We Make Clothes home">
-          <img src="./me.jpg" alt="" />
-          <span className="site-brand-name">We Make Clothes</span>
+        <button type="button" className="site-brand" onClick={goHome} aria-label="Wimik home">
+          <span className="site-brand-name wordmark" style={{ color: logoColor }}>Wimik</span>
         </button>
 
         <nav className="site-nav" aria-label="Main navigation">
@@ -90,6 +100,10 @@ const AppNav = () => {
                 className={`site-nav-link ${item.className || ''}`}
                 aria-current={item.active ? 'page' : undefined}
                 onClick={item.active ? undefined : item.onClick}
+                style={item.key === 'create' ? {
+                  '--cta': designButton.background,
+                  '--cta-ink': designButton.color,
+                } : undefined}
               >
                 <IconComponent />
                 <NavLabel full={item.full} short={item.short} />

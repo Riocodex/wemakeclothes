@@ -50,18 +50,19 @@ const DesignCard = ({ item, listing, onOpen, onList, onViewListing, onDelete }) 
       {item.previewImage ? (
         <ListingPreview item={item} />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-xs font-medium text-ink-400">
-          No preview
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-400">
+          <span className="wordmark !text-sm text-ink-300">WIMIK</span>
+          <span className="text-xs font-medium">No preview</span>
         </div>
       )}
-      <div className="absolute left-3 top-3">
+      <div className="absolute left-2.5 top-2.5 sm:left-3 sm:top-3">
         {listing ? (
-          <span className="badge badge-overlay">
+          <span className="badge bg-brand-500 text-white shadow-sm">
             <TagIcon className="h-3 w-3" />
             Listed · {formatPrice(listing.price, listing.currency)}
           </span>
         ) : (
-          <span className="badge badge-overlay text-ink-500">Draft</span>
+          <span className="badge badge-overlay text-ink-600">Draft</span>
         )}
       </div>
       <span className="listing-media-hover">
@@ -72,14 +73,14 @@ const DesignCard = ({ item, listing, onOpen, onList, onViewListing, onDelete }) 
       </span>
     </button>
 
-    <div className="flex flex-1 flex-col p-3.5 sm:p-4">
+    <div className="listing-body">
       <p className="eyebrow text-ink-500">{getGarmentLabel(item.design)}</p>
       <h3 className="mt-1 truncate text-sm font-semibold text-ink-900 sm:text-[0.9375rem]">{item.title}</h3>
       <p className="mt-0.5 text-xs text-ink-500">
         {listing ? 'Listed on marketplace' : `Saved ${formatDate(item.createdAt)}`}
       </p>
 
-      <div className="mt-auto flex gap-2 pt-4">
+      <div className="mt-auto flex gap-2 pt-3.5">
         <button type="button" className="btn btn-primary btn-sm flex-1" onClick={() => onOpen(item)}>
           <span className="sm:hidden">Open</span>
           <span className="hidden sm:inline">Open in editor</span>
@@ -166,7 +167,13 @@ const MyDesigns = () => {
   const [designsError, setDesignsError] = useState('')
 
   useEffect(() => {
-    if (!snap.myDesignsOpen) return
+    if (!signedIn && state.myDesignsOpen) {
+      state.myDesignsOpen = false
+    }
+  }, [signedIn])
+
+  useEffect(() => {
+    if (!snap.myDesignsOpen || !signedIn) return
 
     let active = true
     setLoadingDesigns(true)
@@ -275,8 +282,8 @@ const MyDesigns = () => {
 
   const tabs = [
     { key: 'designs', label: 'Saved designs', short: 'Saved', count: designsView.length, icon: GridIcon },
-    { key: 'listings', label: 'Listings', count: myListings.length, icon: TagIcon },
-    { key: 'purchases', label: 'Purchases', count: purchases.length, icon: ReceiptIcon },
+    { key: 'listings', label: 'Listings', short: 'Listed', count: myListings.length, icon: TagIcon },
+    { key: 'purchases', label: 'Purchases', short: 'Bought', count: purchases.length, icon: ReceiptIcon },
   ]
 
   const roleLabel = ROLE_LABELS[user?.role]
@@ -285,7 +292,7 @@ const MyDesigns = () => {
   return (
     <>
     <AnimatePresence>
-      {snap.intro && snap.myDesignsOpen && !snap.marketplaceOpen && (
+      {snap.intro && snap.myDesignsOpen && signedIn && !snap.marketplaceOpen && (
         <motion.section
           className='page my-designs-panel'
           initial={{ opacity: 0, y: 12 }}
@@ -296,50 +303,44 @@ const MyDesigns = () => {
           <div className='page-inner'>
             <header className='page-hero flex flex-col gap-5 md:flex-row md:items-end md:justify-between'>
               <div>
-                <p className='eyebrow text-brand-700'>Studio</p>
-                <h1 className='page-title mt-2'>My Designs</h1>
-                <p className='page-subtitle'>Your saved designs, marketplace listings, and purchases in one place.</p>
+                <p className='eyebrow text-brand-600'>Studio</p>
+                <h1 className='page-title mt-3'>My <em>Designs</em></h1>
+                <p className='page-subtitle'>Everything you&apos;ve made, listed and bought, in one place.</p>
               </div>
-              <button type='button' className='btn btn-primary self-start md:self-auto' onClick={goCreate}>
+              <button type='button' className='btn btn-brand self-start md:self-auto' onClick={goCreate}>
                 <PlusIcon />
                 New design
               </button>
             </header>
 
-            <div className='surface-card mb-6 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between'>
-              {signedIn && user ? (
+            <div className='surface-card mb-6 flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between'>
+              {user && (
                 <div className='flex min-w-0 items-center gap-3'>
-                  <span className='auth-avatar h-10 w-10 text-sm'>
+                  <span className='auth-avatar h-11 w-11 text-sm'>
                     {(user.name || 'U').trim().charAt(0).toUpperCase()}
                   </span>
                   <div className='min-w-0'>
-                    <p className='truncate text-sm font-semibold text-ink-900'>{user.name}</p>
-                    <p className='truncate text-xs text-ink-500'>
-                      {roleLabel ? `${roleLabel} account · ` : ''}{user.email}
-                    </p>
+                    <div className='flex min-w-0 items-center gap-2'>
+                      <p className='truncate text-sm font-semibold text-ink-900'>{user.name}</p>
+                      {roleLabel && <span className='badge badge-neutral'>{roleLabel}</span>}
+                    </div>
+                    <p className='truncate text-xs text-ink-500'>{user.email}</p>
                   </div>
                   <span className='badge badge-active badge-dot ml-1 hidden sm:inline-flex'>Synced</span>
                 </div>
-              ) : (
-                <div className='flex min-w-0 items-center gap-3'>
-                  <span className='inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink-100 text-ink-600'>
-                    <LockIcon />
-                  </span>
-                  <div className='min-w-0'>
-                    <p className='text-sm font-semibold text-ink-900'>Browsing as a guest</p>
-                    <p className='text-xs text-ink-500'>Designs are saved on this device. Sign in to sync them and to buy.</p>
+              )}
+              <dl className='grid grid-cols-3 gap-2 md:w-auto md:min-w-[22rem]'>
+                {tabs.map((tab) => (
+                  <div key={tab.key} className='rounded-xl bg-paper px-3 py-2.5'>
+                    <dt className='text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-ink-500'>
+                      {tab.short || tab.label}
+                    </dt>
+                    <dd className='mt-1 text-xl font-bold leading-none tabular-nums tracking-tight text-ink-900'>
+                      {loadingDesigns ? '–' : tab.count}
+                    </dd>
                   </div>
-                </div>
-              )}
-              {!signedIn && (
-                <button
-                  type='button'
-                  className='btn btn-secondary btn-sm self-start sm:self-auto'
-                  onClick={() => requestSignIn('Sign in to sync designs and buy from the marketplace.')}
-                >
-                  Sign in
-                </button>
-              )}
+                ))}
+              </dl>
             </div>
 
             <div className='segmented mb-5 flex w-full sm:inline-flex sm:w-auto [&>button]:flex-1 [&>button]:justify-center sm:[&>button]:flex-none' role='tablist' aria-label='Dashboard sections'>
@@ -376,8 +377,8 @@ const MyDesigns = () => {
             {ready && activeTab === 'designs' && designsView.length === 0 && (
               <EmptyState
                 icon={GridIcon}
-                title='No saved designs yet'
-                message='No saved designs yet. Open the customizer and click Save Design first.'
+                title='Your studio is empty'
+                message='Design your first piece in the customizer and hit Save design. It will show up here.'
                 action={
                   <button type='button' className='btn btn-primary btn-sm' onClick={goCreate}>
                     <PlusIcon />
@@ -407,7 +408,7 @@ const MyDesigns = () => {
               <EmptyState
                 icon={TagIcon}
                 title='Nothing listed yet'
-                message='List one of your saved designs to start selling on the marketplace.'
+                message='Pick a saved design, set your price, and sell it on the Wimik marketplace.'
                 action={
                   <button type='button' className='btn btn-secondary btn-sm' onClick={() => setActiveTab('designs')}>
                     <GridIcon />
@@ -491,7 +492,7 @@ const MyDesigns = () => {
             <div className='flex items-start justify-between gap-3'>
               <div className='min-w-0'>
                 <p className='eyebrow text-ink-500'>Sell</p>
-                <h3 id='list-design-title' className='mt-1 text-lg font-bold tracking-tight'>List design</h3>
+                <h3 id='list-design-title' className='display mt-1 text-xl leading-tight'>List on Wimik</h3>
               </div>
               <button
                 type='button'
@@ -541,7 +542,7 @@ const MyDesigns = () => {
               <button type='button' className='btn btn-secondary flex-1' onClick={() => setListingDraft(null)}>
                 Cancel
               </button>
-              <button type='button' className='btn btn-primary flex-1' onClick={handleConfirmListing}>
+              <button type='button' className='btn btn-brand flex-1' onClick={handleConfirmListing}>
                 <TagIcon />
                 List on marketplace
               </button>

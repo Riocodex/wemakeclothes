@@ -13,7 +13,7 @@ const fallbackModelPath = "/shirt_baked.glb"
 
 export const GARMENT_CATALOG = {
   tshirt_short: {
-    label: "Short sleeve",
+    label: "T-shirt",
     modelPath: fallbackModelPath,
     meshName: "T_Shirt_male",
     decal: { logo: defaultLogo, full: defaultFull },
@@ -66,10 +66,12 @@ const PREVIEW = {
   bikini: "🩱",
 }
 
-export const GARMENT_OPTIONS = Object.entries(GARMENT_CATALOG).map(
-  ([name, definition]) => ({
+const HIDDEN_STYLES = new Set(['bikini'])
+
+export const GARMENT_OPTIONS = Object.entries(GARMENT_CATALOG)
+  .filter(([name]) => !HIDDEN_STYLES.has(name))
+  .map(([name, definition]) => ({
     name,
     label: definition.label,
     preview: PREVIEW[name] || "👕",
-  })
-)
+  }))

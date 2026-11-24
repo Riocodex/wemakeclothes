@@ -68,28 +68,36 @@ export function createDefaultDesign (catalogId) {
  * @param {object} [legacy]
  * @returns {object} current design object
  */
+const asTShirt = (design) => {
+  const tee = CATALOG_META.tshirt_short
+  return {
+    ...design,
+    catalogId: 'tshirt_short',
+    type: tee.type,
+    sleeve: tee.sleeve,
+    parts: [...tee.parts],
+  }
+}
+
 export function migrateOrCreateDesign (legacy) {
   if (!legacy) return createDefaultDesign('tshirt_short')
   if (legacy.catalogId && GARMENT_CATALOG[legacy.catalogId]) {
-    const base = createDefaultDesign(legacy.catalogId)
-    return {
+    const base = createDefaultDesign('tshirt_short')
+    return asTShirt({
       ...base,
       ...legacy,
-      catalogId: legacy.catalogId,
       colors: { ...base.colors, ...legacy.colors },
       textures: { ...base.textures, ...legacy.textures },
       layers: Array.isArray(legacy.layers) ? legacy.layers : base.layers
-    }
+    })
   }
-  const fromOldType = legacy.garmentType && GARMENT_CATALOG[legacy.garmentType]
-  const id = fromOldType ? legacy.garmentType : 'tshirt_short'
-  const d = createDefaultDesign(id)
+  const d = createDefaultDesign('tshirt_short')
   d.colors.body = legacy.baseColor || legacy.colors?.body || d.colors.body
   d.layers = Array.isArray(legacy.layers) ? legacy.layers : []
   if (legacy.textures) {
     d.textures = { ...d.textures, ...legacy.textures }
   }
-  return d
+  return asTShirt(d)
 }
 
 /**

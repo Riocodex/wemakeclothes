@@ -5,6 +5,7 @@ import state from '../store'
 import { buyMarketplaceListing } from '../services/designService'
 import { fadeAnimation } from '../config/motion'
 import {
+  STATUS_LABELS,
   formatPrice,
   getGarmentLabel,
   getListingStatus,
@@ -35,7 +36,7 @@ const MarketplaceViewer = () => {
     state.marketplaceOpen = true
     state.myDesignsOpen = false
     state.intro = true
-    state.sceneTheme = 'dark'
+    state.sceneTheme = 'light'
   }
 
   const handleBuy = async () => {
@@ -88,29 +89,38 @@ const MarketplaceViewer = () => {
 
           <motion.aside className="product-viewer-details" {...fadeAnimation}>
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="badge badge-neutral">{getGarmentLabel(listing.design)}</span>
+              <span className="eyebrow mr-1 text-brand-500">Marketplace</span>
               <StatusBadge item={listing} />
               {listing.isMine && <span className="badge badge-brand">Your listing</span>}
             </div>
 
-            <h2 className="mt-3 text-xl font-bold leading-tight tracking-tight text-ink-900 sm:text-2xl">
+            <h2 className="display mt-3 text-[1.35rem] leading-tight sm:text-[1.55rem]">
               {listing.title}
             </h2>
-            <p className="mt-1 text-sm text-ink-500">by {getSellerName(listing)}</p>
 
-            <p className="mt-4 text-2xl font-bold tracking-tight text-ink-900">
-              {formatPrice(listing.price, listing.currency)}
-            </p>
+            <div className="mt-3 flex items-baseline justify-between gap-3">
+              <p className="text-xl font-bold tabular-nums tracking-tight">
+                {formatPrice(listing.price, listing.currency)}
+              </p>
+              <p className="truncate text-xs opacity-70">by {getSellerName(listing)}</p>
+            </div>
+
+            <dl className="product-spec hidden sm:grid">
+              <div><dt>Garment</dt><dd>{getGarmentLabel(listing.design)}</dd></div>
+              <div><dt>Seller</dt><dd>{getSellerName(listing)}</dd></div>
+              <div><dt>Status</dt><dd>{STATUS_LABELS[status]}</dd></div>
+            </dl>
+            <p className="mt-2 text-xs font-medium opacity-70 sm:hidden">{getGarmentLabel(listing.design)}</p>
 
             {listing.description ? (
-              <p className="mt-3 text-sm leading-relaxed text-ink-600">{listing.description}</p>
+              <p className="mt-4 text-sm leading-relaxed opacity-80">{listing.description}</p>
             ) : null}
 
             <div className="mt-5 flex flex-col gap-2">
               {!listing.isMine && (
                 <button
                   type="button"
-                  className="btn btn-primary btn-lg btn-block"
+                  className="btn btn-brand btn-lg btn-block"
                   onClick={handleBuy}
                   disabled={!purchasable}
                 >
@@ -130,8 +140,8 @@ const MarketplaceViewer = () => {
               </button>
             </div>
 
-            <p className="mt-4 hidden border-t border-ink-200/70 pt-4 text-xs leading-relaxed text-ink-500 sm:block">
-              A purchase copies this design into My Designs so you can keep customizing it.
+            <p className="mt-4 hidden border-t border-current/10 pt-4 text-xs leading-relaxed opacity-60 sm:block">
+              Drag to spin. Buying adds a copy to My Designs so you can keep restyling it.
             </p>
           </motion.aside>
         </div>

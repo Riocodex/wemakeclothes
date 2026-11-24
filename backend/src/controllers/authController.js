@@ -1,4 +1,4 @@
-import { createAnonClient, createServiceClient } from '../config/supabase.js'
+import { createAnonClient, createServiceClient, hasSupabaseConfig } from '../config/supabase.js'
 import { mapProfile, toAuthUser } from '../db/map.js'
 import { HttpError, asyncHandler } from '../utils/httpError.js'
 import { serializeUser } from '../utils/serializers.js'
@@ -33,7 +33,17 @@ const serializeAuth = (profile, token) => ({
   token,
 })
 
+const requireSupabase = () => {
+  if (!hasSupabaseConfig()) {
+    throw new HttpError(
+      503,
+      'Supabase is not configured. Add SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY to backend/.env, then restart the API.'
+    )
+  }
+}
+
 export const register = asyncHandler(async (req, res) => {
+  requireSupabase()
   const { name, email, password } = req.body
 
   if (!name?.trim() || !email?.trim() || !password) {
@@ -89,6 +99,7 @@ export const register = asyncHandler(async (req, res) => {
 })
 
 export const login = asyncHandler(async (req, res) => {
+  requireSupabase()
   const { email, password } = req.body
 
   if (!email?.trim() || !password) {
